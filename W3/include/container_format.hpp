@@ -89,6 +89,13 @@ public:
     // Writes exactly one framed block.  The payload must already be complete,
     // so payloadBytes and payloadBits can be serialized before the payload.
     void writeBlock(const ContainerBlock& block);
+    void writeBlock(BlockType type,
+                    bool isLast,
+                    std::uint64_t sourceLength,
+                    std::uint64_t payloadBits,
+                    const std::uint8_t* data,
+                    std::size_t size,
+                    std::uint32_t crc32);
 
     // A valid CMP2 file must contain one block marked isLast=true.
     void finish();
@@ -119,6 +126,7 @@ public:
 
     bool hasNextBlock() const;
     ContainerBlock readNextBlock();
+    ContainerBlock readNextBlock(std::vector<std::uint8_t>& reusablePayload);
 
     // Verifies that a final block was seen and that no bytes follow it.
     void finish();

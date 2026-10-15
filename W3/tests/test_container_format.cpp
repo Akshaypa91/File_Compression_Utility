@@ -131,6 +131,36 @@ void test_streaming_api() {
     reader.finish();
 }
 
+void test_zero_copy_and_reusable_payload_api() {
+    const auto path = test_path("reusable_payload.cmp2");
+    const std::vector<std::uint8_t> firstPayload{0x10, 0x20, 0x30, 0x40};
+    const std::vector<std::uint8_t> secondPayload{0xA5, 0x5A};
+
+    cmp2::ContainerWriter writer = cmp2::ContainerWriter::open(path.string(), 15);
+    writer.writeBlock(BlockType::Stored, false, firstPayload.size(),
+                      firstPayload.size() * 8ULL, firstPayload.data(),
+                      firstPayload.size(), 0x11111111U);
+    writer.writeBlock(BlockType::Stored, true, secondPayload.size(),
+                      secondPayload.size() * 8ULL, secondPayload.data(),
+                      secondPayload.size(), 0x22222222U);
+    writer.finish();
+
+    cmp2::ContainerReader reader = cmp2::ContainerReader::open(path.string());
+    std::vector<std::uint8_t> reusablePayload;
+    auto first = reader.readNextBlock(reusablePayload);
+    assert(first.payload.empty());
+    assert(reusablePayload == firstPayload);
+    const auto* originalBuffer = reusablePayload.data();
+    const size_t originalCapacity = reusablePayload.capacity();
+
+    auto second = reader.readNextBlock(reusablePayload);
+    assert(second.payload.empty());
+    assert(reusablePayload == secondPayload);
+    assert(reusablePayload.data() == originalBuffer);
+    assert(reusablePayload.capacity() == originalCapacity);
+    reader.finish();
+}
+
 void test_bad_signature() {
     const auto path = test_path("bad_signature.cmp2");
     auto bytes = read_bytes(test_path("round_trip.cmp2"));
@@ -220,6 +250,7 @@ int main() {
     test_round_trip_stored_and_compressed();
     test_empty_file_representation();
     test_streaming_api();
+    test_zero_copy_and_reusable_payload_api();
     test_bad_signature();
     test_unsupported_version();
     test_truncated_input();
