@@ -1,0 +1,14 @@
+# editor settings (the committed one hardcodes a personal absolute path)
+.vscode/
+
+# build output
+build/
+build_*/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+
+# compressed output and scratch
+*.cmp
+*.o
+*.a
