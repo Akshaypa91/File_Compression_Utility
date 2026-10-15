@@ -104,6 +104,21 @@ constexpr unsigned distSymbol(std::uint32_t dist) {
 }
 
 // ---------------------------------------------------------------------------
+// Project token model (HLD/LLD section 6.1): Token{offset, length, nextChar}.
+//   literal token : offset = 0, length = 0, nextChar = the byte
+//   match token   : copy `length` bytes from `offset` back, then output `nextChar`
+// W2's public output is this triple. TokenBlock::addToken() stores it as the compact words
+// above (a match word followed by a literal word), so W1 and the frequency counting are
+// unchanged. End-of-input rule: a match must never reach the last byte of its chunk; W2
+// shortens it so that nextChar always exists (no special end marker is needed).
+// ---------------------------------------------------------------------------
+struct Token {
+    std::uint32_t offset;
+    std::uint32_t length;
+    std::uint8_t  nextChar;
+};
+
+// ---------------------------------------------------------------------------
 // TokenBlock: the shared box W2 fills and W1 reads. W3 allocates it once and reuses it.
 // W2 counts frequencies while emitting, so W1 never needs a counting pass.
 // ---------------------------------------------------------------------------
@@ -139,6 +154,17 @@ struct TokenBlock {
         ++litlenFreq[ls];
         ++distFreq[ds];
         extraBitsTotal += kTables.lenExtra[ls - kFirstLenSym] + kTables.distExtra[ds];
+    }
+
+    // True when one more Token{offset,length,nextChar} is guaranteed to fit (it needs 2 words).
+    bool hasRoomForToken() const { return n + 2 <= kBlockTokens; }
+
+    // Stores one project Token and updates the counts. Precondition: hasRoomForToken(), and
+    // either length == 0 (literal) or kMinMatch <= length <= kMaxMatch and
+    // 1 <= offset <= kMaxDistance.
+    void addToken(const Token& t) {
+        if (t.length != 0) addMatch(t.length, t.offset);
+        addLiteral(t.nextChar);
     }
 };
 
