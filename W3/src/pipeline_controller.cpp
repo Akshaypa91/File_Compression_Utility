@@ -7,6 +7,7 @@
 #include <iostream>
 #include <limits>
 #include <stdexcept>
+#include <cassert>
 
 using namespace std;
 
@@ -24,15 +25,13 @@ uint64_t getFileSize(ifstream& input) {
 void reportProgress(ostream* progress, uint64_t completed, uint64_t& nextReport) {
     if (progress == nullptr) return;
     while (completed >= nextReport) {
-        *progress << "Processed " << completed / (1024ULL * 1024ULL)
-                  << " MiB\n";
+        *progress << "Processed " << completed / (1024ULL * 1024ULL) << " MiB\n";
         nextReport += kProgressIntervalBytes;
     }
 }
 
 [[noreturn]] void throwW1Failure(w1::Status status, const char* operation) {
-    throw runtime_error(string("W1 ") + operation + " failed: " +
-                        w1::statusName(status));
+    throw runtime_error(string("W1 ") + operation + " failed: " + w1::statusName(status));
 }
 
 void validateTokenBlock(const cmp::TokenBlock& block,
@@ -86,8 +85,7 @@ void PipelineController::compressFile(const string& inputPath,
             const size_t request = static_cast<size_t>(min<uint64_t>(
                 fileSize - bytesLoaded, cmp2::kMaxSourceBytesPerBlock));
             if (sourceBuffer.size() < request) sourceBuffer.resize(request);
-            input.read(reinterpret_cast<char*>(sourceBuffer.data()),
-                       static_cast<streamsize>(request));
+            input.read(reinterpret_cast<char*>(sourceBuffer.data()), static_cast<streamsize>(request));
             if (input.gcount() != static_cast<streamsize>(request)) {
                 throw runtime_error("Short read while loading input block");
             }
@@ -101,6 +99,8 @@ void PipelineController::compressFile(const string& inputPath,
         tokenBlock.reset();
         producer_.encodeBlock(blockSource, available, windowSize, tokenBlock);
         validateTokenBlock(tokenBlock, blockSource, available);
+        // Ensure block size and token count limits (as per spec)
+        assert(tokenBlock.srcLen <= cmp2::kMaxSourceBytesPerBlock && tokenBlock.n <= cmp::kBlockTokens);
         const bool isLast = tokenBlock.srcLen == fileSize - bytesCovered;
 
         const w1::Plan plan = w1::plan(tokenBlock);
@@ -142,8 +142,8 @@ void PipelineController::compressFile(const string& inputPath,
 }
 
 void PipelineController::decompressFile(const string& inputPath,
-                                        const string& outputPath,
-                                        ostream* progress) {
+                                      const string& outputPath,
+                                      ostream* progress) {
     cmp2::ContainerReader reader = cmp2::ContainerReader::open(inputPath);
     ofstream output(outputPath, ios::binary | ios::trunc);
     if (!output) throw runtime_error("Unable to open output file: " + outputPath);
@@ -163,15 +163,13 @@ void PipelineController::decompressFile(const string& inputPath,
         if (block.type == cmp2::BlockType::Stored) {
             for (uint8_t byte : payloadBuffer) decoder_.lit(byte);
         } else {
-            w1::BitReader bitReader(payloadBuffer.data(), payloadBuffer.size(),
-                                    block.payloadBits);
+            w1::BitReader bitReader(payloadBuffer.data(), payloadBuffer.size(), block.payloadBits);
             if (!bitReader.valid()) {
                 throw runtime_error("Invalid W1 bit length in compressed block");
             }
             const w1::Status tableStatus = w1::readTables(bitReader, tables);
             if (tableStatus != w1::Status::Ok) throwW1Failure(tableStatus, "readTables");
-            const w1::Status decodeStatus =
-                w1::decodeBlock(bitReader, tables, decoder_);
+            const w1::Status decodeStatus = w1::decodeBlock(bitReader, tables, decoder_);
             if (decodeStatus != w1::Status::Ok) throwW1Failure(decodeStatus, "decodeBlock");
         }
 
