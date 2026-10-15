@@ -481,7 +481,49 @@ The independent container test suite covers:
 The tests use fake CRC32 values. This verifies that the container preserves the
 checksum field without coupling the container module to CRC32 implementation.
 
-## 14. Build and test
+## 14. Benchmarking module
+
+The benchmarking component of Worklet 3 measures performance and compression
+effectiveness at both the per-block level and the whole-file level.
+
+### Metrics calculated per block (`BlockBenchmark`):
+
+- **Original size**: uncompressed source bytes (`sourceLength`)
+- **Payload size**: bytes stored in container (`payloadBytes`)
+- **Meaningful bits**: exact bit count (`payloadBits`)
+- **Framing overhead**: 1 byte flags + LEB128 varints + 4 bytes CRC32
+- **Final block size**: framing overhead + payload bytes (exact wire size)
+- **Compression & decompression time**: measured with high-resolution timers (`std::chrono::high_resolution_clock`) in nanoseconds/milliseconds
+- **Throughput**: compression and decompression speed in MB/s
+- **Compression ratio**: `originalSize / finalBlockSize`
+- **Percentage reduction**: `((originalSize - finalBlockSize) / originalSize) * 100%`
+- **CRC-32 integrity**: verification status
+
+### Combined whole-file metrics (`FileBenchmark`):
+
+- **Total original & final sizes**
+- **Container header size**: 6 bytes (`CMP2` magic [4] + version [1] + log2Window [1])
+- **Total payload vs framing overhead**
+- **Overall compression ratio** & **percentage reduction**
+- **Overall throughput** (MB/s)
+- **Block counts**: stored vs compressed block breakdown
+- **Lossless round-trip verification**
+
+Formatters export reports to text tables, CSV, and JSON.
+
+## 15. Worklet 3 instruction requirements test suite
+
+In addition to `test_container_format`, the suite includes `test_w3_instructions` covering:
+
+1. **Empty file, 1 byte, 2 bytes**: edge cases round-trip (empty file = 1 stored block with 0 bytes and `isLast = true`).
+2. **Text & repeated pattern**: verifies compression ratio > 1.0 and positive percentage reduction.
+3. **Random bytes (incompressible)**: fallback to stored blocks with wire overhead < 0.1%.
+4. **1 MiB and 1 MiB + 1 byte**: validates block boundary transitions (1 block vs 2 blocks).
+5. **Bit-flip detection**: CRC-32 detects corrupted payload bytes cleanly with no crash.
+6. **Truncation detection**: reader detects truncated input cleanly with no crash.
+7. **Streaming handoff & benchmarking report**: multi-block streaming with per-block breakdown and summary report.
+
+## 16. Build and test
 
 From this directory:
 
@@ -491,6 +533,11 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
-The library target is `cmp2_container` and the test executable is
-`test_container_format`.
+Or compile and run directly with clang++ / g++:
+
+```sh
+clang++ -std=c++17 -Wall -Wextra -Wpedantic -IW3/include W3/src/container_format.cpp W3/src/benchmarking.cpp W3/tests/test_container_format.cpp -o test_container && ./test_container
+clang++ -std=c++17 -Wall -Wextra -Wpedantic -IW3/include W3/src/container_format.cpp W3/src/benchmarking.cpp W3/tests/test_benchmarking.cpp -o test_benchmarking && ./test_benchmarking
+clang++ -std=c++17 -Wall -Wextra -Wpedantic -IW3/include W3/src/container_format.cpp W3/src/benchmarking.cpp W3/tests/test_w3_instructions.cpp -o test_w3_instructions && ./test_w3_instructions
+```
 
