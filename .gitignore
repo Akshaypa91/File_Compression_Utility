@@ -1,5 +1,6 @@
 # editor settings (the committed one hardcodes a personal absolute path)
 .vscode/
+.DS_Store
 
 # build output
 build/
