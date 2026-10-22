@@ -1,6 +1,12 @@
 CXX = g++
 
-CXXFLAGS = -std=c++17 -Wall -Wextra -pedantic -Iinclude -Ishared/include
+# CXXFLAGS = -std=c++17 -Wall -Wextra -pedantic -Iinclude -Ishared/include
+CXXFLAGS = -std=c++17 -Wall -Wextra -pedantic \
+           -Iinclude \
+           -Ishared/include \
+           -I../shared/include \
+           -I../W3/include \
+           -I../W1/include
 
 TARGET = lz77
 
@@ -8,13 +14,15 @@ SOURCES = \
 	main.cpp \
 	src/Token.cpp \
 	src/HashChain.cpp \
-	src/LZ77.cpp
+	src/LZ77.cpp \
+	src/LZ77BlockProducer.cpp
 
 OBJECTS = \
 	main.o \
 	src/Token.o \
 	src/HashChain.o \
-	src/LZ77.o
+	src/LZ77.o \
+	src/LZ77BlockProducer.o
 
 TEST_TARGET = test_lz77
 
@@ -46,6 +54,9 @@ src/HashChain.o: src/HashChain.cpp include/HashChain.h
 
 src/LZ77.o: src/LZ77.cpp include/LZ77.h include/Token.h include/HashChain.h
 	$(CXX) $(CXXFLAGS) -c src/LZ77.cpp -o src/LZ77.o
+
+src/LZ77BlockProducer.o: src/LZ77BlockProducer.cpp include/LZ77BlockProducer.h include/LZ77.h
+	$(CXX) $(CXXFLAGS) -c src/LZ77BlockProducer.cpp -o src/LZ77BlockProducer.o
 
 test: $(TEST_TARGET)
 		./$(TEST_TARGET)
