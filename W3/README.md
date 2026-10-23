@@ -9,6 +9,29 @@ The container module is deliberately independent of Worklets 1 and 2. It
 accepts completed block data from the pipeline and returns parsed block data to
 the pipeline.
 
+## Building and running the complete utility
+
+The W3 CMake project builds the `compressor` executable when the W1, W2, and
+shared symbol sources are present. From this directory, configure and build it
+with:
+
+```sh
+cmake -S . -B build
+cmake --build build --target compressor
+```
+
+Compress and decompress files with:
+
+```sh
+./build/compressor -c input.bin -o input.cmp2
+./build/compressor -d input.cmp2 -o restored.bin
+```
+
+Compression optionally accepts a power-of-two window size in bytes from 1 to
+32768 with `-w`; the default is 32768. The executable wires W2's LZ77 block
+producer and the output-history decoder sink into W3's pipeline, while W3 uses
+W1 for Huffman encoding and decoding.
+
 ## 1. Responsibilities
 
 ### Owned by this container module
@@ -540,4 +563,3 @@ clang++ -std=c++17 -Wall -Wextra -Wpedantic -IW3/include W3/src/container_format
 clang++ -std=c++17 -Wall -Wextra -Wpedantic -IW3/include W3/src/container_format.cpp W3/src/benchmarking.cpp W3/tests/test_benchmarking.cpp -o test_benchmarking && ./test_benchmarking
 clang++ -std=c++17 -Wall -Wextra -Wpedantic -IW3/include W3/src/container_format.cpp W3/src/benchmarking.cpp W3/tests/test_w3_instructions.cpp -o test_w3_instructions && ./test_w3_instructions
 ```
-
