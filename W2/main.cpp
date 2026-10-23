@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <cstdint>
 #include <climits>
+#include <cstddef>
 
 #include "include/LZ77.h"
 #include "include/Token.h"
@@ -68,10 +69,8 @@ static std::uint8_t* readFile(
     }
 
     *fileSize = static_cast<std::uint32_t>(size);
-
     return buffer;
 }
-
 
 static void printByte(std::uint8_t byte)
 {
@@ -86,7 +85,6 @@ static void printByte(std::uint8_t byte)
     }
 }
 
-
 static void printTokens(const cmp::TokenBlock& block)
 {
     std::uint32_t index = 0;
@@ -98,7 +96,7 @@ static void printTokens(const cmp::TokenBlock& block)
 
         if (cmp::isMatch(word))
         {
-            // A match is followed by its next literal word.
+            // A match must be followed by its next literal word.
             if (index + 1 >= block.n ||
                 cmp::isMatch(block.tok[index + 1]))
             {
@@ -125,11 +123,9 @@ static void printTokens(const cmp::TokenBlock& block)
         }
         else
         {
-            // A literal is represented by one compact word.
             std::uint8_t literal = cmp::litOf(word);
 
             printf("Token %d : (0, 0, ", tokenNumber);
-
             printByte(literal);
             printf(")\n");
 
@@ -139,7 +135,6 @@ static void printTokens(const cmp::TokenBlock& block)
         tokenNumber++;
     }
 }
-
 
 int main(int argc, char* argv[])
 {
@@ -159,7 +154,6 @@ int main(int argc, char* argv[])
     else
     {
         const char* test = "ABABABABABABABCD";
-
         inputSize = 16;
 
         input = static_cast<std::uint8_t*>(
@@ -179,25 +173,31 @@ int main(int argc, char* argv[])
 
     cmp::TokenBlock block{};
 
-    if (!cmp::compressLZ77(block, input, inputSize))
+    // LZ77_WINDOW_SIZE is declared outside namespace cmp.
+    if (!cmp::compressLZ77(
+            block,
+            input,
+            inputSize,
+            LZ77_WINDOW_SIZE))
     {
         printf("Error: LZ77 compression failed.\n");
-
         free(input);
         return 1;
     }
 
-    printf("\n========== LZ77 OUTPUT ==========\n\n");
+    printf("\nLZ77 OUTPUT\n\n");
     printf("Input size          : %u bytes\n", inputSize);
     printf("Compact word count  : %u\n", block.n);
     printf("LZ77 token sequence :\n\n");
 
     printTokens(block);
 
-    printf("\n========== SYMBOL FREQUENCIES ==========\n\n");
+    printf("\nFREQUENCIES\n\n");
 
-    printf("End-of-block frequency: %u\n",
-           block.litlenFreq[cmp::kEob]);
+    printf(
+        "End-of-block frequency: %u\n",
+        block.litlenFreq[cmp::kEob]
+    );
 
     printf("Literal/length frequencies:\n");
 
@@ -205,9 +205,7 @@ int main(int argc, char* argv[])
     {
         if (block.litlenFreq[i] != 0)
         {
-            printf("Symbol %u : %u\n",
-                   i,
-                   block.litlenFreq[i]);
+            printf("%u : %u\n", i, block.litlenFreq[i]);
         }
     }
 
@@ -217,15 +215,12 @@ int main(int argc, char* argv[])
     {
         if (block.distFreq[i] != 0)
         {
-            printf("Symbol %u : %u\n",
-                   i,
-                   block.distFreq[i]);
+            printf("%u : %u\n", i, block.distFreq[i]);
         }
     }
 
-    printf("\n========================================\n");
+    printf("\n     \n");
 
     free(input);
-
     return 0;
 }
