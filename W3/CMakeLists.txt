@@ -79,27 +79,57 @@ target_link_libraries(benchmark_cli PRIVATE cmp2_container)
 # ---------------------------------------------------------------------------
 set(W1_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../W1"
     CACHE PATH "Path to the W1 source tree")
+set(W2_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../W2"
+    CACHE PATH "Path to the W2 source tree")
 set(SHARED_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../shared/include"
     CACHE PATH "Path to the shared worklet headers")
 
 if(EXISTS "${SHARED_INCLUDE_DIR}/symbols.hpp" AND
    EXISTS "${W1_DIR}/src/huffman.cpp"         AND
-   EXISTS "${W1_DIR}/include/huffman.h")
+   EXISTS "${W1_DIR}/include/huffman.h"       AND
+   EXISTS "${W2_DIR}/src/LZ77.cpp"            AND
+   EXISTS "${W2_DIR}/include/LZ77.h")
 
-    message(STATUS "W1 found — building w3_pipeline and test_pipeline")
-    add_subdirectory(${W1_DIR} ${CMAKE_CURRENT_BINARY_DIR}/w1)
+    message(STATUS "W1, W2, and shared symbols found — building compressor pipeline")
+
+    add_library(w1
+        ${W1_DIR}/src/bit_io.cpp
+        ${W1_DIR}/src/huffman.cpp
+        ${W1_DIR}/src/huffman_tree.cpp
+        ${W1_DIR}/src/min_heap.cpp
+    )
+    target_include_directories(w1 PUBLIC
+        ${W1_DIR}/include
+        ${SHARED_INCLUDE_DIR}
+    )
+
+    add_library(w2_lz77
+        ${W2_DIR}/src/HashChain.cpp
+        ${W2_DIR}/src/LZ77.cpp
+        ${W2_DIR}/src/Token.cpp
+    )
+    target_include_directories(w2_lz77 PUBLIC
+        ${W2_DIR}/include
+        ${SHARED_INCLUDE_DIR}
+    )
 
     add_library(w3_pipeline
         src/pipeline_controller.cpp
         src/command_line_interface.cpp
+        src/production_adapters.cpp
     )
     target_include_directories(w3_pipeline PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${W1_DIR}/include
+        ${W2_DIR}/include
         ${SHARED_INCLUDE_DIR}
     )
-    # Link against our container library, the CRC‑32 library, and W1
-    target_link_libraries(w3_pipeline PUBLIC w1 cmp2_container w3_crc32)
+    target_link_libraries(w3_pipeline PUBLIC
+        w1 w2_lz77 cmp2_container w3_crc32
+    )
+
+    add_executable(compressor src/compressor_main.cpp)
+    target_link_libraries(compressor PRIVATE w3_pipeline)
 
     add_executable(test_pipeline
         tests/test_pipeline.cpp
@@ -107,7 +137,7 @@ if(EXISTS "${SHARED_INCLUDE_DIR}/symbols.hpp" AND
     target_link_libraries(test_pipeline PRIVATE w3_pipeline)
 
 else()
-    message(STATUS "W1/shared not found — pipeline targets skipped; container, CRC, and benchmarking tests remain enabled")
+    message(STATUS "W1/W2/shared sources not found — pipeline and compressor targets skipped")
 endif()
 
 # ---------------------------------------------------------------------------

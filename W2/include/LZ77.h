@@ -18,7 +18,8 @@ namespace cmp {
 bool compressLZ77(
     TokenBlock& block,
     const std::uint8_t* src,
-    std::uint32_t srcLen
+    std::uint32_t srcLen,
+    std::uint32_t windowSize = LZ77_WINDOW_SIZE
 );
 
 } // namespace cmp

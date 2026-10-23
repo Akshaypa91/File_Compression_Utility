@@ -31,6 +31,8 @@ public:
     virtual ~W2DecodeSink() = default;
 
     virtual void setOutput(ostream& output) = 0;
+    virtual void setWindowSize(uint32_t) {}
+    virtual void beginBlock() {}
     virtual void lit(uint8_t byte) = 0;
     virtual bool match(uint32_t length, uint32_t distance) = 0;
     virtual uint64_t bytesProduced() const = 0;
