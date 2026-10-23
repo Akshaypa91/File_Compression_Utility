@@ -1,3 +1,4 @@
+ 
 #include "../include/Token.h"
 
 namespace cmp {
@@ -15,7 +16,6 @@ bool initTokenBlock(
     }
 
     block.reset();
-
     block.src = src;
     block.srcLen = srcLen;
 
@@ -35,7 +35,6 @@ bool emitLiteral(
     }
 
     block.addLiteral(byte);
-
     return true;
 }
 
@@ -63,7 +62,6 @@ bool emitMatch(
     }
 
     block.addMatch(length, distance);
-
     return true;
 }
 
@@ -74,46 +72,54 @@ bool emitToken(
     const Token& token
 )
 {
-    // A match token requires a match word and a literal word.
-    if (token.length != 0)
+    if (token.length == 0)
     {
-        if (!block.hasRoomForToken())
+        // A literal must have offset = 0.
+        if (token.offset != 0)
         {
             return false;
         }
 
-        if (token.length < kMinMatch ||
-            token.length > kMaxMatch)
-        {
-            return false;
-        }
-
-        if (token.offset == 0 ||
-            token.offset > kMaxDistance)
+        if (block.full())
         {
             return false;
         }
     }
     else
     {
-        // A literal token requires one compact word.
-        if (block.full())
+        // Validate the match length.
+        if (token.length < kMinMatch ||
+            token.length > kMaxMatch)
+        {
+            return false;
+        }
+
+        // Validate the match distance.
+        if (token.offset == 0 ||
+            token.offset > kMaxDistance)
+        {
+            return false;
+        }
+
+        // A match token needs two packed words:
+        // one match word and one literal word.
+        if (!block.hasRoomForToken())
         {
             return false;
         }
     }
 
     block.addToken(token);
-
     return true;
 }
 
 
-// Finish the block.
-// reset() already initializes the EOB frequency to 1.
+// EOB frequency is initialized by reset().
 bool finishTokenBlock(TokenBlock& block)
 {
     return block.litlenFreq[kEob] == 1;
 }
 
 } // namespace cmp
+
+ 
