@@ -67,7 +67,9 @@ bool compressLZ77(
     uint32_t srcLen
 )
 {
-    if (srcLen > 0 && src == nullptr)
+    if ((srcLen > 0 && src == nullptr) ||
+        windowSize == 0 ||
+        windowSize > LZ77_WINDOW_SIZE)
     {
         return false;
     }
@@ -118,7 +120,7 @@ bool compressLZ77(
                 getHashHead(&chain, static_cast<int>(hash));
 
             int windowStart =
-                current - LZ77_WINDOW_SIZE;
+                current - static_cast<int>(windowSize);
 
             if (windowStart < 0)
             {

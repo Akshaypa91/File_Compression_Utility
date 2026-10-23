@@ -148,6 +148,7 @@ void PipelineController::decompressFile(const string& inputPath,
     ofstream output(outputPath, ios::binary | ios::trunc);
     if (!output) throw runtime_error("Unable to open output file: " + outputPath);
     decoder_.setOutput(output);
+    decoder_.setWindowSize(1U << reader.header().log2Window);
 
     vector<uint8_t> payloadBuffer;
     w1::HuffTables tables{};
@@ -155,6 +156,7 @@ void PipelineController::decompressFile(const string& inputPath,
     uint64_t nextReport = kProgressIntervalBytes;
     while (reader.hasNextBlock()) {
         const cmp2::ContainerBlock block = reader.readNextBlock(payloadBuffer);
+        decoder_.beginBlock();
         if (w3::Crc32::compute(payloadBuffer.data(), payloadBuffer.size()) != block.crc32) {
             throw runtime_error("CRC32 mismatch: refusing corrupted block before decoding");
         }
