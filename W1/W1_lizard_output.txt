@@ -1,0 +1,63 @@
+================================================
+  NLOC    CCN   token  PARAM  length  location  
+------------------------------------------------
+      66     24    687      4      83 w1::buildLengths@14-96@W1/src/huffman_tree.cpp
+      15      6    182      3      15 w1::assignCanonical@98-112@W1/src/huffman_tree.cpp
+       7      3     70      2       7 w1::kraftSum@114-120@W1/src/huffman_tree.cpp
+      12      7    167      3      12 w1::verifyPrefixFree@122-133@W1/src/huffman_tree.cpp
+      24     11    352      4      25 w1::buildTrie@135-159@W1/src/huffman_tree.cpp
+      11      6    111      2      11 w1::trieDecode@161-171@W1/src/huffman_tree.cpp
+      12      4     90      1      12 w1::MinHeap::push@5-16@W1/src/min_heap.cpp
+      17      7    133      0      17 w1::MinHeap::pop@18-34@W1/src/min_heap.cpp
+      14     10     89      1      14 w1::statusName@8-21@W1/src/huffman.cpp
+      26      4    275      1      29 w1::plan@26-54@W1/src/huffman.cpp
+      33     13    466      3      38 w1::emit@59-96@W1/src/huffman.cpp
+      41     13    453      3      44 w1::buildDecodeTable@101-144@W1/src/huffman.cpp
+      18      9    218      2      20 w1::readTables@146-165@W1/src/huffman.cpp
+       4      2     40      1       4 w1::verifyPrefixFree@170-173@W1/src/huffman.cpp
+      25      7    265      2      29 w1::entropyReport@175-203@W1/src/huffman.cpp
+      17      4    100      0      18 w1::BitWriter::finish@5-22@W1/src/bit_io.cpp
+      20      7    213      3      20 w1::decodeSymbol@40-59@W1/include/huffman.h
+      25     11    278      3      28 w1::decodeBlock@68-95@W1/include/huffman.h
+       3      3     42      2       3 w1::heapLess@19-21@W1/include/min_heap.h
+       1      1     12      0       1 w1::MinHeap::empty@29-29@W1/include/min_heap.h
+       1      1     10      0       1 w1::MinHeap::size@30-30@W1/include/min_heap.h
+       1      1     13      0       1 w1::MinHeap::top@31-31@W1/include/min_heap.h
+       2      1     26      2       2 w1::BitWriter::BitWriter@15-16@W1/include/bit_io.h
+       8      3     82      2       8 w1::BitWriter::write@19-26@W1/include/bit_io.h
+       1      1     10      0       1 w1::BitWriter::bitCount@29-29@W1/include/bit_io.h
+       1      1     10      0       1 w1::BitWriter::overflow@31-31@W1/include/bit_io.h
+      13      2    131      0      13 w1::BitWriter::flush32@36-48@W1/include/bit_io.h
+       8      2     71      3       8 w1::BitReader::BitReader@62-69@W1/include/bit_io.h
+       1      1     10      0       1 w1::BitReader::valid@71-71@W1/include/bit_io.h
+       1      1     12      0       1 w1::BitReader::bitsLeft@72-72@W1/include/bit_io.h
+      16      6    141      0      16 w1::BitReader::refill@75-90@W1/include/bit_io.h
+       3      2     33      1       3 w1::BitReader::peek@93-95@W1/include/bit_io.h
+       5      1     26      1       5 w1::BitReader::consume@96-100@W1/include/bit_io.h
+      11      4     71      2      11 w1::BitReader::readBits@104-114@W1/include/bit_io.h
+       1      1     12      0       1 w1::Plan::totalBits@39-39@W1/include/huffman_types.h
+       3      1     26      0       3 w1::Plan::totalBytes@40-42@W1/include/huffman_types.h
+9 file analyzed.
+==============================================================
+NLOC    Avg.NLOC  AvgCCN  Avg.token  function_cnt    file
+--------------------------------------------------------------
+    144      22.5     9.5      261.5         6     W1/src/huffman_tree.cpp
+     32      14.5     5.5      111.5         2     W1/src/min_heap.cpp
+    166      23.0     8.3      258.0         7     W1/src/huffman.cpp
+     20      17.0     4.0      100.0         1     W1/src/bit_io.cpp
+     59      22.5     9.0      245.5         2     W1/include/huffman.h
+     15       0.0     0.0        0.0         0     W1/include/huffman_tree.h
+     23       1.5     1.5       19.2         4     W1/include/min_heap.h
+     98       5.8     2.1       51.9        12     W1/include/bit_io.h
+     54       2.0     1.0       19.0         2     W1/include/huffman_types.h
+
+===========================================================================================================
+!!!! Warnings (cyclomatic_complexity > 15 or length > 1000 or nloc > 1000000 or parameter_count > 100) !!!!
+================================================
+  NLOC    CCN   token  PARAM  length  location  
+------------------------------------------------
+      66     24    687      4      83 w1::buildLengths@14-96@W1/src/huffman_tree.cpp
+==========================================================================================
+Total nloc   Avg.NLOC  AvgCCN  Avg.token   Fun Cnt  Warning cnt   Fun Rt   nloc Rt
+------------------------------------------------------------------------------------------
+       611      13.0     5.0      136.9       36            1      0.03    0.14
