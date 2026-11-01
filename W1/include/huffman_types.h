@@ -68,8 +68,4 @@ struct EntropyReport {
     double redundancyBitsPerSymbol = 0;   // huffman - entropy; always < 1 when no length limiting applied
 };
 
-<<<<<<< HEAD
 }  // namespace w1
-=======
-}  // namespace w1
->>>>>>> acf0ce4 (Add min_heap, huffman_types and shared symbols)
