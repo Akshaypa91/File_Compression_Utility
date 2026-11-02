@@ -14,6 +14,8 @@
 #include <cstdint>
 #include <cstring>
 
+using namespace std;
+
 namespace cmp {
 
 constexpr unsigned kNumLitLen   = 286;
@@ -32,30 +34,30 @@ constexpr unsigned kBlockTokens = 32768;    // tokens per block (EOB is not stor
 //   literal : bit31 = 0, low 8 bits = the byte
 //   match   : bit31 = 1, bits 16..23 = (length - 3), bits 0..15 = (distance - 1)
 // ---------------------------------------------------------------------------
-using Tok = std::uint32_t;
+using Tok = uint32_t;
 constexpr Tok kMatchFlag = 0x80000000u;
 
-constexpr Tok mkLit(std::uint8_t b) { return b; }
-constexpr Tok mkMatch(std::uint32_t len, std::uint32_t dist) {
+constexpr Tok mkLit(uint8_t b) { return b; }
+constexpr Tok mkMatch(uint32_t len, uint32_t dist) {
     return kMatchFlag | ((len - kMinMatch) << 16) | (dist - 1);
 }
 constexpr bool isMatch(Tok t) { return (t & kMatchFlag) != 0; }
-constexpr std::uint8_t litOf(Tok t) { return static_cast<std::uint8_t>(t & 0xFFu); }
-constexpr std::uint32_t lenOf(Tok t) { return ((t >> 16) & 0xFFu) + kMinMatch; }
-constexpr std::uint32_t distOf(Tok t) { return (t & 0xFFFFu) + 1; }
+constexpr uint8_t litOf(Tok t) { return static_cast<uint8_t>(t & 0xFFu); }
+constexpr uint32_t lenOf(Tok t) { return ((t >> 16) & 0xFFu) + kMinMatch; }
+constexpr uint32_t distOf(Tok t) { return (t & 0xFFFFu) + 1; }
 
 // ---------------------------------------------------------------------------
 // Bucket tables (the standard DEFLATE tables, generated at compile time).
 // W1 and W2 both include these; neither re-implements them.
 // ---------------------------------------------------------------------------
 struct SymbolTables {
-    std::uint16_t lenBase[kNumLenCodes];
-    std::uint8_t  lenExtra[kNumLenCodes];
-    std::uint16_t distBase[kNumDist];
-    std::uint8_t  distExtra[kNumDist];
-    std::uint8_t  lenCode[256];     // (length - 3) -> bucket index 0..28
-    std::uint8_t  distLow[256];     // (distance - 1) < 256      -> bucket index
-    std::uint8_t  distHigh[256];    // (distance - 1) >> 7, for (distance - 1) >= 256
+    uint16_t lenBase[kNumLenCodes];
+    uint8_t  lenExtra[kNumLenCodes];
+    uint16_t distBase[kNumDist];
+    uint8_t  distExtra[kNumDist];
+    uint8_t  lenCode[256];     // (length - 3) -> bucket index 0..28
+    uint8_t  distLow[256];     // (distance - 1) < 256      -> bucket index
+    uint8_t  distHigh[256];    // (distance - 1) >> 7, for (distance - 1) >= 256
 
     constexpr SymbolTables()
         : lenBase{3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31,
@@ -72,20 +74,20 @@ struct SymbolTables {
         for (unsigned c = 0; c + 1 < kNumLenCodes; ++c) {
             const unsigned hi = lenBase[c] + (1u << lenExtra[c]) - 1;
             for (unsigned l = lenBase[c]; l <= hi; ++l) {
-                lenCode[l - kMinMatch] = static_cast<std::uint8_t>(c);
+                lenCode[l - kMinMatch] = static_cast<uint8_t>(c);
             }
         }
-        lenCode[kMaxMatch - kMinMatch] = static_cast<std::uint8_t>(kNumLenCodes - 1);
+        lenCode[kMaxMatch - kMinMatch] = static_cast<uint8_t>(kNumLenCodes - 1);
 
         for (unsigned c = 0; c < kNumDist; ++c) {
             const unsigned lo = distBase[c] - 1u;
             const unsigned hi = lo + (1u << distExtra[c]) - 1u;
             for (unsigned z = lo; z <= hi && z < 256; ++z) {
-                distLow[z] = static_cast<std::uint8_t>(c);
+                distLow[z] = static_cast<uint8_t>(c);
             }
             if (hi >= 256) {
                 for (unsigned i = (lo < 256 ? 256u : lo) >> 7; i <= (hi >> 7); ++i) {
-                    distHigh[i] = static_cast<std::uint8_t>(c);
+                    distHigh[i] = static_cast<uint8_t>(c);
                 }
             }
         }
@@ -95,11 +97,11 @@ struct SymbolTables {
 inline constexpr SymbolTables kTables{};
 
 // literal/length symbol (257..285) for a match length 3..258
-constexpr unsigned lenSymbol(std::uint32_t len) {
+constexpr unsigned lenSymbol(uint32_t len) {
     return kFirstLenSym + kTables.lenCode[len - kMinMatch];
 }
 // distance symbol (0..29) for a distance 1..32768
-constexpr unsigned distSymbol(std::uint32_t dist) {
+constexpr unsigned distSymbol(uint32_t dist) {
     return (dist - 1) < 256 ? kTables.distLow[dist - 1] : kTables.distHigh[(dist - 1) >> 7];
 }
 
@@ -113,9 +115,9 @@ constexpr unsigned distSymbol(std::uint32_t dist) {
 // shortens it so that nextChar always exists (no special end marker is needed).
 // ---------------------------------------------------------------------------
 struct Token {
-    std::uint32_t offset;
-    std::uint32_t length;
-    std::uint8_t  nextChar;
+    uint32_t offset;
+    uint32_t length;
+    uint8_t  nextChar;
 };
 
 // ---------------------------------------------------------------------------
@@ -124,17 +126,17 @@ struct Token {
 // ---------------------------------------------------------------------------
 struct TokenBlock {
     Tok           tok[kBlockTokens];
-    std::uint32_t n;                        // tokens used
-    std::uint32_t litlenFreq[kNumLitLen];   // includes litlenFreq[kEob] == 1
-    std::uint32_t distFreq[kNumDist];
-    std::uint64_t extraBitsTotal;           // sum of extra bits over all matches
-    const std::uint8_t* src;                // raw bytes this block covers (stored fallback)
-    std::uint32_t srcLen;
+    uint32_t n;                        // tokens used
+    uint32_t litlenFreq[kNumLitLen];   // includes litlenFreq[kEob] == 1
+    uint32_t distFreq[kNumDist];
+    uint64_t extraBitsTotal;           // sum of extra bits over all matches
+    const uint8_t* src;                // raw bytes this block covers (stored fallback)
+    uint32_t srcLen;
 
     void reset() {
         n = 0;
-        std::memset(litlenFreq, 0, sizeof litlenFreq);
-        std::memset(distFreq, 0, sizeof distFreq);
+        memset(litlenFreq, 0, sizeof litlenFreq);
+        memset(distFreq, 0, sizeof distFreq);
         litlenFreq[kEob] = 1;
         extraBitsTotal = 0;
         src = nullptr;
@@ -143,11 +145,11 @@ struct TokenBlock {
     bool full() const { return n >= kBlockTokens; }
 
     // Helpers that keep tokens and counters consistent. W2 should use these.
-    void addLiteral(std::uint8_t b) {
+    void addLiteral(uint8_t b) {
         tok[n++] = mkLit(b);
         ++litlenFreq[b];
     }
-    void addMatch(std::uint32_t len, std::uint32_t dist) {
+    void addMatch(uint32_t len, uint32_t dist) {
         tok[n++] = mkMatch(len, dist);
         const unsigned ls = lenSymbol(len);
         const unsigned ds = distSymbol(dist);

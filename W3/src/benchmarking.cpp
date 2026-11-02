@@ -4,23 +4,25 @@
 #include <iomanip>
 #include <sstream>
 
+using namespace std;
+
 namespace cmp2 {
 
-std::size_t calculate_framing_overhead(const ContainerBlock& block) noexcept {
+size_t calculate_framing_overhead(const ContainerBlock& block) noexcept {
     // 1 byte flags + varint(sourceLength) + varint(payloadBytes) + varint(payloadBits) + 4 bytes CRC32
     return 1U +
            varint_length(block.sourceLength) +
-           varint_length(static_cast<std::uint64_t>(block.payload.size())) +
+           varint_length(static_cast<uint64_t>(block.payload.size())) +
            varint_length(block.payloadBits) +
            4U;
 }
 
-std::size_t calculate_total_block_size(const ContainerBlock& block) noexcept {
+size_t calculate_total_block_size(const ContainerBlock& block) noexcept {
     return calculate_framing_overhead(block) + block.payload.size();
 }
 
-double calculate_compression_ratio(std::uint64_t originalSize,
-                                   std::uint64_t finalSize) noexcept {
+double calculate_compression_ratio(uint64_t originalSize,
+                                   uint64_t finalSize) noexcept {
     if (originalSize == 0 && finalSize == 0) {
         return 1.0;
     }
@@ -30,16 +32,16 @@ double calculate_compression_ratio(std::uint64_t originalSize,
     return static_cast<double>(originalSize) / static_cast<double>(finalSize);
 }
 
-double calculate_space_ratio(std::uint64_t originalSize,
-                             std::uint64_t finalSize) noexcept {
+double calculate_space_ratio(uint64_t originalSize,
+                             uint64_t finalSize) noexcept {
     if (originalSize == 0) {
         return (finalSize == 0) ? 1.0 : static_cast<double>(finalSize);
     }
     return static_cast<double>(finalSize) / static_cast<double>(originalSize);
 }
 
-double calculate_percentage_reduction(std::uint64_t originalSize,
-                                      std::uint64_t finalSize) noexcept {
+double calculate_percentage_reduction(uint64_t originalSize,
+                                      uint64_t finalSize) noexcept {
     if (originalSize == 0) {
         return 0.0;
     }
@@ -48,8 +50,8 @@ double calculate_percentage_reduction(std::uint64_t originalSize,
     return ((orig - fin) / orig) * 100.0;
 }
 
-double calculate_throughput_mbs(std::uint64_t bytes,
-                                std::uint64_t durationNs) noexcept {
+double calculate_throughput_mbs(uint64_t bytes,
+                                uint64_t durationNs) noexcept {
     if (durationNs == 0 || bytes == 0) {
         return 0.0;
     }
@@ -68,8 +70,8 @@ void BlockBenchmarkTimer::startCompression() noexcept {
 
 void BlockBenchmarkTimer::stopCompression() noexcept {
     compEnd_ = Clock::now();
-    compressionNs_ = static_cast<std::uint64_t>(
-        std::chrono::duration_cast<std::chrono::nanoseconds>(compEnd_ - compStart_).count());
+    compressionNs_ = static_cast<uint64_t>(
+        chrono::duration_cast<chrono::nanoseconds>(compEnd_ - compStart_).count());
 }
 
 void BlockBenchmarkTimer::startDecompression() noexcept {
@@ -78,11 +80,11 @@ void BlockBenchmarkTimer::startDecompression() noexcept {
 
 void BlockBenchmarkTimer::stopDecompression() noexcept {
     decompEnd_ = Clock::now();
-    decompressionNs_ = static_cast<std::uint64_t>(
-        std::chrono::duration_cast<std::chrono::nanoseconds>(decompEnd_ - decompStart_).count());
+    decompressionNs_ = static_cast<uint64_t>(
+        chrono::duration_cast<chrono::nanoseconds>(decompEnd_ - decompStart_).count());
 }
 
-BlockBenchmark BlockBenchmarkTimer::finish(std::size_t blockIndex,
+BlockBenchmark BlockBenchmarkTimer::finish(size_t blockIndex,
                                            const ContainerBlock& block,
                                            bool crcPassed) const {
     BlockBenchmark m;
@@ -90,10 +92,10 @@ BlockBenchmark BlockBenchmarkTimer::finish(std::size_t blockIndex,
     m.type = block.type;
     m.isLast = block.isLast;
     m.originalSize = block.sourceLength;
-    m.payloadBytes = static_cast<std::uint64_t>(block.payload.size());
+    m.payloadBytes = static_cast<uint64_t>(block.payload.size());
     m.payloadBits = block.payloadBits;
-    m.framingOverhead = static_cast<std::uint64_t>(calculate_framing_overhead(block));
-    m.finalBlockSize = static_cast<std::uint64_t>(calculate_total_block_size(block));
+    m.framingOverhead = static_cast<uint64_t>(calculate_framing_overhead(block));
+    m.finalBlockSize = static_cast<uint64_t>(calculate_total_block_size(block));
 
     m.compressionTimeNs = compressionNs_;
     m.decompressionTimeNs = decompressionNs_;
@@ -115,8 +117,8 @@ BlockBenchmark BlockBenchmarkTimer::finish(std::size_t blockIndex,
 // BenchmarkSession implementation
 // ---------------------------------------------------------------------------
 
-BenchmarkSession::BenchmarkSession(std::string filename)
-    : filename_(std::move(filename)) {}
+BenchmarkSession::BenchmarkSession(string filename)
+    : filename_(move(filename)) {}
 
 void BenchmarkSession::recordBlock(const BlockBenchmark& blockMetric) {
     blocks_.push_back(blockMetric);
@@ -134,7 +136,7 @@ FileBenchmark BenchmarkSession::finalize(bool lossless) {
     report.losslessVerified = lossless;
     report.allCrcVerified = true;
 
-    std::uint64_t totalFinalBlocksSize = 0;
+    uint64_t totalFinalBlocksSize = 0;
 
     for (const auto& b : blocks_) {
         report.originalTotalSize += b.originalSize;
@@ -179,11 +181,11 @@ FileBenchmark BenchmarkSession::finalize(bool lossless) {
 // benchmark_container_file implementation
 // ---------------------------------------------------------------------------
 
-FileBenchmark benchmark_container_file(const std::string& containerPath) {
+FileBenchmark benchmark_container_file(const string& containerPath) {
     BenchmarkSession session(containerPath);
     ContainerReader reader = ContainerReader::open(containerPath);
 
-    std::size_t blockIdx = 0;
+    size_t blockIdx = 0;
     while (reader.hasNextBlock()) {
         BlockBenchmarkTimer timer;
         timer.startDecompression();
@@ -203,13 +205,13 @@ FileBenchmark benchmark_container_file(const std::string& containerPath) {
 // Formatters
 // ---------------------------------------------------------------------------
 
-std::string format_benchmark_report(const FileBenchmark& b) {
-    std::ostringstream out;
+string format_benchmark_report(const FileBenchmark& b) {
+    ostringstream out;
 
     out << "================================================================================\n";
     out << " WORKLET 3 BENCHMARK REPORT: " << b.filename << "\n";
     out << "================================================================================\n";
-    out << std::fixed << std::setprecision(2);
+    out << fixed << setprecision(2);
 
     out << "FILE SUMMARY:\n";
     out << "  Original Size:         " << b.originalTotalSize << " bytes\n";
@@ -235,38 +237,38 @@ std::string format_benchmark_report(const FileBenchmark& b) {
     out << "--------------------------------------------------------------------------------\n";
 
     out << "PER-BLOCK BENCHMARK BREAKDOWN:\n";
-    out << std::left
-        << std::setw(6)  << "Block"
-        << std::setw(12) << "Type"
-        << std::setw(12) << "Orig Bytes"
-        << std::setw(12) << "Payload"
-        << std::setw(10) << "Overhead"
-        << std::setw(12) << "Final Size"
-        << std::setw(9)  << "Ratio"
-        << std::setw(11) << "Reduction"
-        << std::setw(11) << "Comp(ms)"
-        << std::setw(11) << "Decomp(ms)"
-        << std::setw(10) << "CRC32"
+    out << left
+        << setw(6)  << "Block"
+        << setw(12) << "Type"
+        << setw(12) << "Orig Bytes"
+        << setw(12) << "Payload"
+        << setw(10) << "Overhead"
+        << setw(12) << "Final Size"
+        << setw(9)  << "Ratio"
+        << setw(11) << "Reduction"
+        << setw(11) << "Comp(ms)"
+        << setw(11) << "Decomp(ms)"
+        << setw(10) << "CRC32"
         << "\n";
     out << "--------------------------------------------------------------------------------\n";
 
     for (const auto& blk : b.blocks) {
-        std::ostringstream crcHex;
-        crcHex << "0x" << std::uppercase << std::hex << std::setfill('0') << std::setw(8) << blk.crc32;
+        ostringstream crcHex;
+        crcHex << "0x" << uppercase << hex << setfill('0') << setw(8) << blk.crc32;
 
-        out << std::left
-            << std::setw(6)  << blk.blockIndex
-            << std::setw(12) << (blk.type == BlockType::Compressed ? "Compressed" : "Stored")
-            << std::setw(12) << blk.originalSize
-            << std::setw(12) << blk.payloadBytes
-            << std::setw(10) << blk.framingOverhead
-            << std::setw(12) << blk.finalBlockSize
-            << std::setw(9)  << blk.compressionRatio
+        out << left
+            << setw(6)  << blk.blockIndex
+            << setw(12) << (blk.type == BlockType::Compressed ? "Compressed" : "Stored")
+            << setw(12) << blk.originalSize
+            << setw(12) << blk.payloadBytes
+            << setw(10) << blk.framingOverhead
+            << setw(12) << blk.finalBlockSize
+            << setw(9)  << blk.compressionRatio
             << (blk.percentageReduction >= 0.0 ? "+" : "")
-            << std::setw(10) << blk.percentageReduction
-            << std::setw(11) << blk.compressionTimeMs()
-            << std::setw(11) << blk.decompressionTimeMs()
-            << std::setw(10) << crcHex.str()
+            << setw(10) << blk.percentageReduction
+            << setw(11) << blk.compressionTimeMs()
+            << setw(11) << blk.decompressionTimeMs()
+            << setw(10) << crcHex.str()
             << "\n";
     }
     out << "================================================================================\n";
@@ -274,9 +276,9 @@ std::string format_benchmark_report(const FileBenchmark& b) {
     return out.str();
 }
 
-std::string format_benchmark_csv(const FileBenchmark& b) {
-    std::ostringstream out;
-    out << std::fixed << std::setprecision(4);
+string format_benchmark_csv(const FileBenchmark& b) {
+    ostringstream out;
+    out << fixed << setprecision(4);
 
     out << "block_index,type,is_last,original_bytes,payload_bytes,payload_bits,framing_overhead,"
         << "final_block_size,compression_ratio,percentage_reduction,compression_time_ns,"
@@ -297,7 +299,7 @@ std::string format_benchmark_csv(const FileBenchmark& b) {
             << blk.decompressionTimeNs << ","
             << blk.compressionSpeedMBs << ","
             << blk.decompressionSpeedMBs << ","
-            << "0x" << std::uppercase << std::hex << blk.crc32 << std::dec << "\n";
+            << "0x" << uppercase << hex << blk.crc32 << dec << "\n";
     }
 
     out << "\nsummary_total_blocks,summary_original_bytes,summary_final_bytes,summary_compression_ratio,"
@@ -313,9 +315,9 @@ std::string format_benchmark_csv(const FileBenchmark& b) {
     return out.str();
 }
 
-std::string format_benchmark_json(const FileBenchmark& b) {
-    std::ostringstream out;
-    out << std::fixed << std::setprecision(4);
+string format_benchmark_json(const FileBenchmark& b) {
+    ostringstream out;
+    out << fixed << setprecision(4);
 
     out << "{\n";
     out << "  \"filename\": \"" << b.filename << "\",\n";
@@ -337,7 +339,7 @@ std::string format_benchmark_json(const FileBenchmark& b) {
     out << "  \"allCrcVerified\": " << (b.allCrcVerified ? "true" : "false") << ",\n";
     out << "  \"blocks\": [\n";
 
-    for (std::size_t i = 0; i < b.blocks.size(); ++i) {
+    for (size_t i = 0; i < b.blocks.size(); ++i) {
         const auto& blk = b.blocks[i];
         out << "    {\n";
         out << "      \"blockIndex\": " << blk.blockIndex << ",\n";
@@ -362,7 +364,7 @@ std::string format_benchmark_json(const FileBenchmark& b) {
     return out.str();
 }
 
-void print_benchmark_report(std::ostream& out, const FileBenchmark& benchmark) {
+void print_benchmark_report(ostream& out, const FileBenchmark& benchmark) {
     out << format_benchmark_report(benchmark);
 }
 

@@ -6,9 +6,11 @@
 #include "include/LZ77.h"
 #include "include/Token.h"
 
-static std::uint8_t* readFile(
+using namespace std;
+
+static uint8_t* readFile(
     const char* filename,
-    std::uint32_t* fileSize
+    uint32_t* fileSize
 )
 {
     FILE* file = fopen(filename, "rb");
@@ -39,10 +41,10 @@ static std::uint8_t* readFile(
         return nullptr;
     }
 
-    std::size_t allocationSize =
-        size == 0 ? 1 : static_cast<std::size_t>(size);
+    size_t allocationSize =
+        size == 0 ? 1 : static_cast<size_t>(size);
 
-    auto* buffer = static_cast<std::uint8_t*>(
+    auto* buffer = static_cast<uint8_t*>(
         malloc(allocationSize)
     );
 
@@ -52,28 +54,28 @@ static std::uint8_t* readFile(
         return nullptr;
     }
 
-    std::size_t bytesRead = fread(
+    size_t bytesRead = fread(
         buffer,
         1,
-        static_cast<std::size_t>(size),
+        static_cast<size_t>(size),
         file
     );
 
     fclose(file);
 
-    if (bytesRead != static_cast<std::size_t>(size))
+    if (bytesRead != static_cast<size_t>(size))
     {
         free(buffer);
         return nullptr;
     }
 
-    *fileSize = static_cast<std::uint32_t>(size);
+    *fileSize = static_cast<uint32_t>(size);
 
     return buffer;
 }
 
 
-static void printByte(std::uint8_t byte)
+static void printByte(uint8_t byte)
 {
     if (byte >= 32 && byte <= 126 &&
         byte != '\'' && byte != '\\')
@@ -89,7 +91,7 @@ static void printByte(std::uint8_t byte)
 
 static void printTokens(const cmp::TokenBlock& block)
 {
-    std::uint32_t index = 0;
+    uint32_t index = 0;
     int tokenNumber = 0;
 
     while (index < block.n)
@@ -106,9 +108,9 @@ static void printTokens(const cmp::TokenBlock& block)
                 return;
             }
 
-            std::uint32_t distance = cmp::distOf(word);
-            std::uint32_t length = cmp::lenOf(word);
-            std::uint8_t nextChar =
+            uint32_t distance = cmp::distOf(word);
+            uint32_t length = cmp::lenOf(word);
+            uint8_t nextChar =
                 cmp::litOf(block.tok[index + 1]);
 
             printf(
@@ -126,7 +128,7 @@ static void printTokens(const cmp::TokenBlock& block)
         else
         {
             // A literal is represented by one compact word.
-            std::uint8_t literal = cmp::litOf(word);
+            uint8_t literal = cmp::litOf(word);
 
             printf("Token %d : (0, 0, ", tokenNumber);
 
@@ -143,8 +145,8 @@ static void printTokens(const cmp::TokenBlock& block)
 
 int main(int argc, char* argv[])
 {
-    std::uint8_t* input = nullptr;
-    std::uint32_t inputSize = 0;
+    uint8_t* input = nullptr;
+    uint32_t inputSize = 0;
 
     if (argc >= 2)
     {
@@ -162,7 +164,7 @@ int main(int argc, char* argv[])
 
         inputSize = 16;
 
-        input = static_cast<std::uint8_t*>(
+        input = static_cast<uint8_t*>(
             malloc(inputSize)
         );
 
@@ -171,9 +173,9 @@ int main(int argc, char* argv[])
             return 1;
         }
 
-        for (std::uint32_t i = 0; i < inputSize; i++)
+        for (uint32_t i = 0; i < inputSize; i++)
         {
-            input[i] = static_cast<std::uint8_t>(test[i]);
+            input[i] = static_cast<uint8_t>(test[i]);
         }
     }
 

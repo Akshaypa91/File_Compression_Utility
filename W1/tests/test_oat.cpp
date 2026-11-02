@@ -12,6 +12,8 @@
 #include "huffman.h"
 #include "test_util.h"
 
+using namespace std;
+
 namespace {
 
 constexpr int kRows = 9;
@@ -29,25 +31,25 @@ const int L9[kRows][kCols] = {
 };
 
 // Builds a block for one combination of levels. Matches and literal-only tokens alternate.
-std::unique_ptr<cmp::TokenBlock> buildBlock(int a, int b, int c, int d, unsigned seed) {
-    std::mt19937 rng(seed);
+unique_ptr<cmp::TokenBlock> buildBlock(int a, int b, int c, int d, unsigned seed) {
+    mt19937 rng(seed);
     auto tb = newBlock();
-    auto lit = [&]() -> std::uint8_t {
+    auto lit = [&]() -> uint8_t {
         switch (a) {
-            case 1: return static_cast<std::uint8_t>(rng());
-            case 2: return (rng() % 10 < 8) ? static_cast<std::uint8_t>('e')
-                                            : static_cast<std::uint8_t>('a' + rng() % 20);
-            default: return static_cast<std::uint8_t>('z');
+            case 1: return static_cast<uint8_t>(rng());
+            case 2: return (rng() % 10 < 8) ? static_cast<uint8_t>('e')
+                                            : static_cast<uint8_t>('a' + rng() % 20);
+            default: return static_cast<uint8_t>('z');
         }
     };
-    auto len = [&]() -> std::uint32_t {
+    auto len = [&]() -> uint32_t {
         switch (b) {
             case 1: return 3;
             case 2: return 3 + rng() % 256;
             default: return 258;
         }
     };
-    auto dist = [&]() -> std::uint32_t {
+    auto dist = [&]() -> uint32_t {
         switch (c) {
             case 1: return 1;
             case 2: return 1 + rng() % 32768;
@@ -58,8 +60,8 @@ std::unique_ptr<cmp::TokenBlock> buildBlock(int a, int b, int c, int d, unsigned
     unsigned i = 0;
     while (tb->n < target && tb->hasRoomForToken()) {
         if (i++ % 2 == 0) {
-            const std::uint32_t dd = dist();            // evaluated in a fixed order on every compiler
-            const std::uint32_t ll = len();
+            const uint32_t dd = dist();            // evaluated in a fixed order on every compiler
+            const uint32_t ll = len();
             tb->addToken(cmp::Token{dd, ll, lit()});
         } else {
             tb->addToken(cmp::Token{0, 0, lit()});
@@ -72,13 +74,13 @@ std::unique_ptr<cmp::TokenBlock> buildBlock(int a, int b, int c, int d, unsigned
 void runCombination(int a, int b, int c, int d, int row) {
     const int before = failureCount();
     auto tb = buildBlock(a, b, c, d, 1000u + static_cast<unsigned>(a * 27 + b * 9 + c * 3 + d));
-    std::vector<cmp::Tok> out;
+    vector<cmp::Tok> out;
     w1::Plan p;
     const bool ok = roundTrip(*tb, out, &p);              // plan -> emit -> readTables -> decodeBlock
     CHECK(ok);
     if (ok) {
         bool same = out.size() == tb->n;
-        for (std::uint32_t i = 0; same && i < tb->n; ++i) same = out[i] == tb->tok[i];
+        for (uint32_t i = 0; same && i < tb->n; ++i) same = out[i] == tb->tok[i];
         CHECK(same);                                      // lossless
         CHECK(w1::verifyPrefixFree(p));                   // valid codes
         bool within15 = true;
@@ -88,7 +90,7 @@ void runCombination(int a, int b, int c, int d, int row) {
         if (d == 3) CHECK(tb->n == cmp::kBlockTokens);    // the "full" level really is full
     }
     if (failureCount() != before) {
-        std::fprintf(stderr, "  ^ failure(s) above came from combination row %d (A%d B%d C%d D%d)\n",
+        fprintf(stderr, "  ^ failure(s) above came from combination row %d (A%d B%d C%d D%d)\n",
                      row, a, b, c, d);
     }
 }
@@ -130,10 +132,10 @@ static void testOutputBufferBoundary() {
     tb->addMatch(9, 3);
     tb->addLiteral('x');
     const w1::Plan p = w1::plan(*tb);
-    const std::size_t need = p.totalBytes();                  // 161
+    const size_t need = p.totalBytes();                  // 161
 
     {   // exactly enough: everything succeeds
-        std::vector<std::uint8_t> buf(need);
+        vector<uint8_t> buf(need);
         w1::BitWriter w(buf.data(), buf.size());
         CHECK(w1::emit(*tb, p, w) == w1::Status::Ok);
         CHECK(w.finish() == need);
@@ -142,14 +144,14 @@ static void testOutputBufferBoundary() {
     {   // one byte short: the problem must be detectable, by emit() or by overflow() afterwards.
         // (emit() only sees full 32-bit words being written; the last partial byte is written
         //  by finish(), so for a buffer that is short by 1-3 bytes the failure shows up there.)
-        std::vector<std::uint8_t> buf(need - 1);
+        vector<uint8_t> buf(need - 1);
         w1::BitWriter w(buf.data(), buf.size());
         const w1::Status s = w1::emit(*tb, p, w);
         w.finish();
         CHECK(s == w1::Status::BufferOverflow || w.overflow());
     }
     {   // half the size: emit() itself reports it
-        std::vector<std::uint8_t> buf(need / 2);
+        vector<uint8_t> buf(need / 2);
         w1::BitWriter w(buf.data(), buf.size());
         CHECK(w1::emit(*tb, p, w) == w1::Status::BufferOverflow);
     }
