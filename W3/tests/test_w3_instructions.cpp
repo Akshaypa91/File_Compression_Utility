@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+using namespace std;
+
 namespace {
 
 using cmp2::BlockType;
@@ -19,18 +21,18 @@ using cmp2::ContainerReader;
 using cmp2::ContainerWriter;
 using cmp2::ErrorCode;
 
-const std::filesystem::path kTestDir =
-    std::filesystem::temp_directory_path() / "w3_instructions_tests";
+const filesystem::path kTestDir =
+    filesystem::temp_directory_path() / "w3_instructions_tests";
 
-std::filesystem::path test_file(const std::string& name) {
+filesystem::path test_file(const string& name) {
     return kTestDir / name;
 }
 
 // Simple IEEE CRC-32 implementation (reflected 0xEDB88320) for standalone test verification
-std::uint32_t compute_crc32(const std::uint8_t* data, std::size_t size) noexcept {
-    std::uint32_t crc = 0xFFFFFFFFU;
-    for (std::size_t i = 0; i < size; ++i) {
-        crc ^= static_cast<std::uint32_t>(data[i]);
+uint32_t compute_crc32(const uint8_t* data, size_t size) noexcept {
+    uint32_t crc = 0xFFFFFFFFU;
+    for (size_t i = 0; i < size; ++i) {
+        crc ^= static_cast<uint32_t>(data[i]);
         for (unsigned b = 0; b < 8; ++b) {
             crc = (crc & 1U) ? ((crc >> 1U) ^ 0xEDB88320U) : (crc >> 1U);
         }
@@ -39,26 +41,26 @@ std::uint32_t compute_crc32(const std::uint8_t* data, std::size_t size) noexcept
 }
 
 // Helper: writes an arbitrary byte array to a temporary file
-void write_raw_file(const std::filesystem::path& path, const std::vector<std::uint8_t>& data) {
-    std::ofstream out(path, std::ios::binary | std::ios::trunc);
+void write_raw_file(const filesystem::path& path, const vector<uint8_t>& data) {
+    ofstream out(path, ios::binary | ios::trunc);
     assert(out);
     if (!data.empty()) {
-        out.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
+        out.write(reinterpret_cast<const char*>(data.data()), static_cast<streamsize>(data.size()));
     }
     assert(out);
 }
 
 // Helper: reads an arbitrary byte array from file
-std::vector<std::uint8_t> read_raw_file(const std::filesystem::path& path) {
-    std::ifstream in(path, std::ios::binary);
+vector<uint8_t> read_raw_file(const filesystem::path& path) {
+    ifstream in(path, ios::binary);
     assert(in);
-    in.seekg(0, std::ios::end);
-    const auto size = static_cast<std::size_t>(in.tellg());
-    in.seekg(0, std::ios::beg);
+    in.seekg(0, ios::end);
+    const auto size = static_cast<size_t>(in.tellg());
+    in.seekg(0, ios::beg);
 
-    std::vector<std::uint8_t> data(size);
+    vector<uint8_t> data(size);
     if (size > 0) {
-        in.read(reinterpret_cast<char*>(data.data()), static_cast<std::streamsize>(size));
+        in.read(reinterpret_cast<char*>(data.data()), static_cast<streamsize>(size));
     }
     return data;
 }
@@ -67,7 +69,7 @@ std::vector<std::uint8_t> read_raw_file(const std::filesystem::path& path) {
 // TEST 1: Edge cases — Empty file, 1 byte, 2 bytes round-trip
 // ---------------------------------------------------------------------------
 void test_edge_cases_empty_1byte_2bytes() {
-    std::cout << "[Test 1] Testing edge cases (empty file, 1 byte, 2 bytes)...\n";
+    cout << "[Test 1] Testing edge cases (empty file, 1 byte, 2 bytes)...\n";
 
     // 1.1 Empty file: W3 instructions Section 3: "Empty file: write one STORED block with 0 bytes and isLast = true."
     {
@@ -154,20 +156,20 @@ void test_edge_cases_empty_1byte_2bytes() {
         cmp2::FileBenchmark fb = cmp2::benchmark_container_file(cmpPath.string());
         assert(fb.originalTotalSize == 2);
     }
-    std::cout << "  -> PASS: Edge cases round-trip successfully.\n";
+    cout << "  -> PASS: Edge cases round-trip successfully.\n";
 }
 
 // ---------------------------------------------------------------------------
 // TEST 2: Text file & repeated pattern file (compression really shrinks them)
 // ---------------------------------------------------------------------------
 void test_text_and_repeated_pattern() {
-    std::cout << "[Test 2] Testing text & repeated pattern file compression...\n";
+    cout << "[Test 2] Testing text & repeated pattern file compression...\n";
 
     const auto cmpPath = test_file("pattern.cmp2");
 
     // Highly repetitive pattern: original size = 16,384 bytes, compressed payload = 120 bytes
-    const std::uint64_t originalLen = 16384;
-    std::vector<std::uint8_t> compressedPayload(120, 0x3C);
+    const uint64_t originalLen = 16384;
+    vector<uint8_t> compressedPayload(120, 0x3C);
 
     ContainerBlock block;
     block.type = BlockType::Compressed;
@@ -196,7 +198,7 @@ void test_text_and_repeated_pattern() {
     assert(fb.overallCompressionRatio > 100.0);             // > 100x ratio!
     assert(fb.overallPercentageReduction > 99.0);           // > 99% space savings!
 
-    std::cout << "  -> PASS: Compression ratio = " << fb.overallCompressionRatio
+    cout << "  -> PASS: Compression ratio = " << fb.overallCompressionRatio
               << "x, Percentage reduction = " << fb.overallPercentageReduction << "%\n";
 }
 
@@ -204,14 +206,14 @@ void test_text_and_repeated_pattern() {
 // TEST 3: Random bytes (incompressible) — stored blocks work, negligible overhead
 // ---------------------------------------------------------------------------
 void test_random_incompressible_stored_blocks() {
-    std::cout << "[Test 3] Testing random bytes (incompressible fallback to stored blocks)...\n";
+    cout << "[Test 3] Testing random bytes (incompressible fallback to stored blocks)...\n";
 
     const auto cmpPath = test_file("random.cmp2");
-    const std::size_t size = 65536; // 64 KiB
-    std::vector<std::uint8_t> randomData(size);
-    std::mt19937 rng(42);
-    for (std::size_t i = 0; i < size; ++i) {
-        randomData[i] = static_cast<std::uint8_t>(rng() & 0xFF);
+    const size_t size = 65536; // 64 KiB
+    vector<uint8_t> randomData(size);
+    mt19937 rng(42);
+    for (size_t i = 0; i < size; ++i) {
+        randomData[i] = static_cast<uint8_t>(rng() & 0xFF);
     }
 
     // Incompressible fallback: stored block with raw bytes
@@ -236,9 +238,9 @@ void test_random_incompressible_stored_blocks() {
     assert(fb.compressedBlocksCount == 0);
 
     // Wire overhead is file header (6) + framing (1 flag + 3 varints + 4 crc = 14 bytes)
-    const std::uint64_t overhead = fb.finalTotalSize - fb.originalTotalSize;
+    const uint64_t overhead = fb.finalTotalSize - fb.originalTotalSize;
     assert(overhead <= 20); // only tiny fixed overhead!
-    std::cout << "  -> PASS: Stored block wire overhead on 64 KiB is only "
+    cout << "  -> PASS: Stored block wire overhead on 64 KiB is only "
               << overhead << " bytes ("
               << (static_cast<double>(overhead) / static_cast<double>(size) * 100.0) << "%).\n";
 }
@@ -247,9 +249,9 @@ void test_random_incompressible_stored_blocks() {
 // TEST 4: File of exactly 1 MiB and 1 MiB + 1 — block boundary test
 // ---------------------------------------------------------------------------
 void test_block_boundaries_1mib_and_1mib_plus_one() {
-    std::cout << "[Test 4] Testing block boundaries (exactly 1 MiB vs 1 MiB + 1 byte)...\n";
+    cout << "[Test 4] Testing block boundaries (exactly 1 MiB vs 1 MiB + 1 byte)...\n";
 
-    constexpr std::uint64_t k1MiB = cmp2::kMaxSourceBytesPerBlock; // 1,048,576 bytes
+    constexpr uint64_t k1MiB = cmp2::kMaxSourceBytesPerBlock; // 1,048,576 bytes
 
     // 4.1 Exactly 1 MiB fits in EXACTLY ONE BLOCK
     {
@@ -258,7 +260,7 @@ void test_block_boundaries_1mib_and_1mib_plus_one() {
         b.type = BlockType::Stored;
         b.isLast = true;
         b.sourceLength = k1MiB;
-        b.payload = std::vector<std::uint8_t>(k1MiB, 0x5A);
+        b.payload = vector<uint8_t>(k1MiB, 0x5A);
         b.payloadBits = k1MiB * 8ULL;
         b.crc32 = compute_crc32(b.payload.data(), b.payload.size());
 
@@ -283,7 +285,7 @@ void test_block_boundaries_1mib_and_1mib_plus_one() {
         b0.type = BlockType::Stored;
         b0.isLast = false;
         b0.sourceLength = k1MiB;
-        b0.payload = std::vector<std::uint8_t>(k1MiB, 0x11);
+        b0.payload = vector<uint8_t>(k1MiB, 0x11);
         b0.payloadBits = k1MiB * 8ULL;
         b0.crc32 = compute_crc32(b0.payload.data(), b0.payload.size());
 
@@ -313,14 +315,14 @@ void test_block_boundaries_1mib_and_1mib_plus_one() {
         assert(fb.blocks[0].originalSize == k1MiB);
         assert(fb.blocks[1].originalSize == 1);
     }
-    std::cout << "  -> PASS: 1 MiB in 1 block, 1 MiB + 1 properly splits into 2 blocks.\n";
+    cout << "  -> PASS: 1 MiB in 1 block, 1 MiB + 1 properly splits into 2 blocks.\n";
 }
 
 // ---------------------------------------------------------------------------
 // TEST 5: Flip one bit in the middle of file — CRC catches it, clean exit, no crash
 // ---------------------------------------------------------------------------
 void test_bit_flip_caught_by_crc() {
-    std::cout << "[Test 5] Testing bit-flip detection (CRC-32 verification catches corruption)...\n";
+    cout << "[Test 5] Testing bit-flip detection (CRC-32 verification catches corruption)...\n";
 
     const auto origPath = test_file("valid_data.cmp2");
     const auto corruptPath = test_file("corrupt_bit.cmp2");
@@ -329,7 +331,7 @@ void test_bit_flip_caught_by_crc() {
     b.type = BlockType::Stored;
     b.isLast = true;
     b.sourceLength = 100;
-    b.payload = std::vector<std::uint8_t>(100, 0x7E);
+    b.payload = vector<uint8_t>(100, 0x7E);
     b.payloadBits = 800;
     b.crc32 = compute_crc32(b.payload.data(), b.payload.size());
 
@@ -347,7 +349,7 @@ void test_bit_flip_caught_by_crc() {
     const auto file = cmp2::read_container(corruptPath.string());
     assert(file.blocks.size() == 1);
 
-    const std::uint32_t recalculatedCrc =
+    const uint32_t recalculatedCrc =
         compute_crc32(file.blocks[0].payload.data(), file.blocks[0].payload.size());
 
     // The recalculated CRC MUST NOT equal stored crc32!
@@ -364,8 +366,8 @@ void test_bit_flip_caught_by_crc() {
     assert(!fb.allCrcVerified);
     assert(!fb.losslessVerified);
 
-    std::cout << "  -> PASS: CRC32 mismatch detected (stored=0x"
-              << std::hex << file.blocks[0].crc32 << ", actual=0x" << recalculatedCrc << std::dec
+    cout << "  -> PASS: CRC32 mismatch detected (stored=0x"
+              << hex << file.blocks[0].crc32 << ", actual=0x" << recalculatedCrc << dec
               << ") without crashing.\n";
 }
 
@@ -373,7 +375,7 @@ void test_bit_flip_caught_by_crc() {
 // TEST 6: Truncate file — clean error, no crash
 // ---------------------------------------------------------------------------
 void test_truncate_file_clean_error() {
-    std::cout << "[Test 6] Testing truncated file handling (clean error, no crash)...\n";
+    cout << "[Test 6] Testing truncated file handling (clean error, no crash)...\n";
 
     const auto origPath = test_file("trunc_base.cmp2");
     const auto truncPath = test_file("truncated.cmp2");
@@ -382,7 +384,7 @@ void test_truncate_file_clean_error() {
     b.type = BlockType::Stored;
     b.isLast = true;
     b.sourceLength = 200;
-    b.payload = std::vector<std::uint8_t>(200, 0x33);
+    b.payload = vector<uint8_t>(200, 0x33);
     b.payloadBits = 1600;
     b.crc32 = compute_crc32(b.payload.data(), b.payload.size());
 
@@ -402,14 +404,14 @@ void test_truncate_file_clean_error() {
     }
     assert(caught && "TruncatedInput ContainerError must be thrown");
 
-    std::cout << "  -> PASS: Truncated file threw clean TruncatedInput ContainerError.\n";
+    cout << "  -> PASS: Truncated file threw clean TruncatedInput ContainerError.\n";
 }
 
 // ---------------------------------------------------------------------------
 // TEST 7: Multi-block streaming handoff with full benchmarking report
 // ---------------------------------------------------------------------------
 void test_streaming_handoff_and_benchmarking_report() {
-    std::cout << "[Test 7] Testing streaming writer -> reader handoff with benchmark report...\n";
+    cout << "[Test 7] Testing streaming writer -> reader handoff with benchmark report...\n";
 
     const auto path = test_file("streaming_benchmark.cmp2");
 
@@ -418,12 +420,12 @@ void test_streaming_handoff_and_benchmarking_report() {
 
     cmp2::BenchmarkSession session("streaming_benchmark.cmp2");
 
-    for (std::size_t i = 0; i < 3; ++i) {
+    for (size_t i = 0; i < 3; ++i) {
         ContainerBlock b;
         b.type = (i % 2 == 0) ? BlockType::Compressed : BlockType::Stored;
         b.isLast = (i == 2);
         b.sourceLength = 5000 + i * 1000;
-        b.payload = std::vector<std::uint8_t>(b.type == BlockType::Compressed ? 1500 : b.sourceLength, static_cast<std::uint8_t>(i));
+        b.payload = vector<uint8_t>(b.type == BlockType::Compressed ? 1500 : b.sourceLength, static_cast<uint8_t>(i));
         b.payloadBits = b.payload.size() * 8ULL;
         b.crc32 = compute_crc32(b.payload.data(), b.payload.size());
 
@@ -439,7 +441,7 @@ void test_streaming_handoff_and_benchmarking_report() {
 
     // Now read back streaming
     ContainerReader reader = ContainerReader::open(path.string());
-    std::size_t readCount = 0;
+    size_t readCount = 0;
     while (reader.hasNextBlock()) {
         ContainerBlock b = reader.readNextBlock();
         const auto actualCrc = compute_crc32(b.payload.data(), b.payload.size());
@@ -455,21 +457,21 @@ void test_streaming_handoff_and_benchmarking_report() {
     assert(fb.storedBlocksCount == 1);
 
     // Verify printed report output
-    std::string report = cmp2::format_benchmark_report(fb);
+    string report = cmp2::format_benchmark_report(fb);
     assert(!report.empty());
-    std::cout << report << "\n";
-    std::cout << "  -> PASS: Multi-block handoff and benchmark report verified.\n";
+    cout << report << "\n";
+    cout << "  -> PASS: Multi-block handoff and benchmark report verified.\n";
 }
 
 } // namespace
 
 int main() {
-    std::filesystem::remove_all(kTestDir);
-    std::filesystem::create_directories(kTestDir);
+    filesystem::remove_all(kTestDir);
+    filesystem::create_directories(kTestDir);
 
-    std::cout << "========================================================\n";
-    std::cout << " RUNNING WORKLET 3 INSTRUCTION REQUIREMENTS TESTS\n";
-    std::cout << "========================================================\n";
+    cout << "========================================================\n";
+    cout << " RUNNING WORKLET 3 INSTRUCTION REQUIREMENTS TESTS\n";
+    cout << "========================================================\n";
 
     test_edge_cases_empty_1byte_2bytes();
     test_text_and_repeated_pattern();
@@ -479,10 +481,10 @@ int main() {
     test_truncate_file_clean_error();
     test_streaming_handoff_and_benchmarking_report();
 
-    std::filesystem::remove_all(kTestDir);
+    filesystem::remove_all(kTestDir);
 
-    std::cout << "========================================================\n";
-    std::cout << " ALL WORKLET 3 INSTRUCTION TESTS PASSED!\n";
-    std::cout << "========================================================\n";
+    cout << "========================================================\n";
+    cout << " ALL WORKLET 3 INSTRUCTION TESTS PASSED!\n";
+    cout << "========================================================\n";
     return 0;
 }

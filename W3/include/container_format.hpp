@@ -7,20 +7,22 @@
 #include <string>
 #include <vector>
 
+using namespace std;
+
 namespace cmp2 {
 
 // CMP2 is deliberately a different wire format from the earlier single-payload
 // CMP1 proposal.  Do not silently accept or produce CMP1 with this API.
 constexpr char kMagic[4] = {'C', 'M', 'P', '2'};
-constexpr std::uint8_t kSupportedVersion = 0x01;
-constexpr std::uint8_t kMaxWindowLog2 = 15; // 2^15 = 32 KiB
+constexpr uint8_t kSupportedVersion = 0x01;
+constexpr uint8_t kMaxWindowLog2 = 15; // 2^15 = 32 KiB
 
 // The block-size limit is part of the block-wise design.  It prevents a
 // malformed file from requesting an unbounded allocation in the reader.
-constexpr std::uint64_t kMaxSourceBytesPerBlock = 1ULL << 20; // 1 MiB
-constexpr std::uint64_t kMaxPayloadBytesPerBlock = 16ULL << 20; // 16 MiB
+constexpr uint64_t kMaxSourceBytesPerBlock = 1ULL << 20; // 1 MiB
+constexpr uint64_t kMaxPayloadBytesPerBlock = 16ULL << 20; // 16 MiB
 
-enum class BlockType : std::uint8_t {
+enum class BlockType : uint8_t {
     Stored = 0,
     Compressed = 1,
 };
@@ -46,9 +48,9 @@ enum class ErrorCode {
 
 const char* error_code_name(ErrorCode code) noexcept;
 
-class ContainerError final : public std::runtime_error {
+class ContainerError final : public runtime_error {
 public:
-    ContainerError(ErrorCode code, const std::string& message);
+    ContainerError(ErrorCode code, const string& message);
 
     ErrorCode code() const noexcept { return code_; }
 
@@ -57,8 +59,8 @@ private:
 };
 
 struct ContainerHeader {
-    std::uint8_t version = kSupportedVersion;
-    std::uint8_t log2Window = 15;
+    uint8_t version = kSupportedVersion;
+    uint8_t log2Window = 15;
 };
 
 // This is the public handoff object between the pipeline and the container.
@@ -67,16 +69,16 @@ struct ContainerHeader {
 struct ContainerBlock {
     BlockType type = BlockType::Stored;
     bool isLast = false;
-    std::uint64_t sourceLength = 0;
-    std::uint64_t payloadBits = 0;
-    std::vector<std::uint8_t> payload;
-    std::uint32_t crc32 = 0;
+    uint64_t sourceLength = 0;
+    uint64_t payloadBits = 0;
+    vector<uint8_t> payload;
+    uint32_t crc32 = 0;
 };
 
 class ContainerWriter final {
 public:
-    static ContainerWriter open(const std::string& path,
-                                std::uint8_t log2Window);
+    static ContainerWriter open(const string& path,
+                                uint8_t log2Window);
 
     ContainerWriter(const ContainerWriter&) = delete;
     ContainerWriter& operator=(const ContainerWriter&) = delete;
@@ -91,22 +93,22 @@ public:
     void writeBlock(const ContainerBlock& block);
     void writeBlock(BlockType type,
                     bool isLast,
-                    std::uint64_t sourceLength,
-                    std::uint64_t payloadBits,
-                    const std::uint8_t* data,
-                    std::size_t size,
-                    std::uint32_t crc32);
+                    uint64_t sourceLength,
+                    uint64_t payloadBits,
+                    const uint8_t* data,
+                    size_t size,
+                    uint32_t crc32);
 
     // A valid CMP2 file must contain one block marked isLast=true.
     void finish();
 
 private:
-    ContainerWriter(std::string path,
-                    std::uint8_t log2Window,
-                    std::ofstream&& output);
+    ContainerWriter(string path,
+                    uint8_t log2Window,
+                    ofstream&& output);
 
-    std::string path_;
-    std::ofstream output_;
+    string path_;
+    ofstream output_;
     ContainerHeader header_{};
     bool lastBlockWritten_ = false;
     bool finished_ = false;
@@ -114,7 +116,7 @@ private:
 
 class ContainerReader final {
 public:
-    static ContainerReader open(const std::string& path);
+    static ContainerReader open(const string& path);
 
     ContainerReader(const ContainerReader&) = delete;
     ContainerReader& operator=(const ContainerReader&) = delete;
@@ -126,20 +128,20 @@ public:
 
     bool hasNextBlock() const;
     ContainerBlock readNextBlock();
-    ContainerBlock readNextBlock(std::vector<std::uint8_t>& reusablePayload);
+    ContainerBlock readNextBlock(vector<uint8_t>& reusablePayload);
 
     // Verifies that a final block was seen and that no bytes follow it.
     void finish();
 
 private:
-    ContainerReader(std::string path,
-                    std::ifstream&& input,
-                    std::uint64_t fileSize,
+    ContainerReader(string path,
+                    ifstream&& input,
+                    uint64_t fileSize,
                     ContainerHeader header);
 
-    std::string path_;
-    std::ifstream input_;
-    std::uint64_t fileSize_ = 0;
+    string path_;
+    ifstream input_;
+    uint64_t fileSize_ = 0;
     ContainerHeader header_{};
     bool lastBlockSeen_ = false;
     bool finished_ = false;
@@ -147,16 +149,16 @@ private:
 
 // Convenience APIs for callers that already have a bounded vector of blocks.
 // The streaming classes above are preferred by the block-wise pipeline.
-void write_container(const std::string& path,
-                     std::uint8_t log2Window,
-                     const std::vector<ContainerBlock>& blocks);
+void write_container(const string& path,
+                     uint8_t log2Window,
+                     const vector<ContainerBlock>& blocks);
 
 struct ContainerFile {
     ContainerHeader header;
-    std::vector<ContainerBlock> blocks;
+    vector<ContainerBlock> blocks;
 };
 
-ContainerFile read_container(const std::string& path);
+ContainerFile read_container(const string& path);
 
 } // namespace cmp2
 

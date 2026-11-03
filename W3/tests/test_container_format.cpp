@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+using namespace std;
+
 namespace {
 
 using cmp2::BlockType;
@@ -16,37 +18,37 @@ using cmp2::ContainerBlock;
 using cmp2::ContainerError;
 using cmp2::ErrorCode;
 
-const std::filesystem::path kTestDirectory =
-    std::filesystem::temp_directory_path() / "cmp2_container_tests";
+const filesystem::path kTestDirectory =
+    filesystem::temp_directory_path() / "cmp2_container_tests";
 
-std::filesystem::path test_path(const std::string& name) {
+filesystem::path test_path(const string& name) {
     return kTestDirectory / name;
 }
 
-void write_bytes(const std::filesystem::path& path,
-                 const std::vector<std::uint8_t>& bytes) {
-    std::ofstream output(path, std::ios::binary | std::ios::trunc);
+void write_bytes(const filesystem::path& path,
+                 const vector<uint8_t>& bytes) {
+    ofstream output(path, ios::binary | ios::trunc);
     assert(output);
     output.write(reinterpret_cast<const char*>(bytes.data()),
-                 static_cast<std::streamsize>(bytes.size()));
+                 static_cast<streamsize>(bytes.size()));
     assert(output);
 }
 
-std::vector<std::uint8_t> read_bytes(const std::filesystem::path& path) {
-    std::ifstream input(path, std::ios::binary);
+vector<uint8_t> read_bytes(const filesystem::path& path) {
+    ifstream input(path, ios::binary);
     assert(input);
-    input.seekg(0, std::ios::end);
-    const auto size = static_cast<std::size_t>(input.tellg());
-    input.seekg(0, std::ios::beg);
+    input.seekg(0, ios::end);
+    const auto size = static_cast<size_t>(input.tellg());
+    input.seekg(0, ios::beg);
 
-    std::vector<std::uint8_t> bytes(size);
+    vector<uint8_t> bytes(size);
     input.read(reinterpret_cast<char*>(bytes.data()),
-               static_cast<std::streamsize>(bytes.size()));
+               static_cast<streamsize>(bytes.size()));
     assert(input || bytes.empty());
     return bytes;
 }
 
-void expect_error(ErrorCode expected, const std::function<void()>& operation) {
+void expect_error(ErrorCode expected, const function<void()>& operation) {
     try {
         operation();
         assert(false && "expected ContainerError");
@@ -133,8 +135,8 @@ void test_streaming_api() {
 
 void test_zero_copy_and_reusable_payload_api() {
     const auto path = test_path("reusable_payload.cmp2");
-    const std::vector<std::uint8_t> firstPayload{0x10, 0x20, 0x30, 0x40};
-    const std::vector<std::uint8_t> secondPayload{0xA5, 0x5A};
+    const vector<uint8_t> firstPayload{0x10, 0x20, 0x30, 0x40};
+    const vector<uint8_t> secondPayload{0xA5, 0x5A};
 
     cmp2::ContainerWriter writer = cmp2::ContainerWriter::open(path.string(), 15);
     writer.writeBlock(BlockType::Stored, false, firstPayload.size(),
@@ -146,7 +148,7 @@ void test_zero_copy_and_reusable_payload_api() {
     writer.finish();
 
     cmp2::ContainerReader reader = cmp2::ContainerReader::open(path.string());
-    std::vector<std::uint8_t> reusablePayload;
+    vector<uint8_t> reusablePayload;
     auto first = reader.readNextBlock(reusablePayload);
     assert(first.payload.empty());
     assert(reusablePayload == firstPayload);
@@ -204,8 +206,8 @@ void test_invalid_bit_length() {
     // The second block starts after the 6-byte file header and the first
     // block.  Locate the payloadBits varint by using the writer's known small
     // layout: first block is 1 + 1 + 1 + 1 + 4 + 4 bytes.
-    const std::size_t secondBlockOffset = 6 + 12;
-    const std::size_t payloadBitsOffset = secondBlockOffset + 1 + 1 + 1;
+    const size_t secondBlockOffset = 6 + 12;
+    const size_t payloadBitsOffset = secondBlockOffset + 1 + 1 + 1;
     bytes[payloadBitsOffset] = 0x7F; // 127 bits for a two-byte payload
     write_bytes(path, bytes);
 
@@ -235,7 +237,7 @@ void test_writer_rejects_invalid_stored_block() {
 void test_reserved_flags() {
     const auto path = test_path("reserved_flags.cmp2");
     auto bytes = read_bytes(test_path("round_trip.cmp2"));
-    bytes[6] = static_cast<std::uint8_t>(bytes[6] | 0x80U);
+    bytes[6] = static_cast<uint8_t>(bytes[6] | 0x80U);
     write_bytes(path, bytes);
     expect_error(ErrorCode::InvalidFlags,
                  [&] { cmp2::read_container(path.string()); });
@@ -244,8 +246,8 @@ void test_reserved_flags() {
 } // namespace
 
 int main() {
-    std::filesystem::remove_all(kTestDirectory);
-    std::filesystem::create_directories(kTestDirectory);
+    filesystem::remove_all(kTestDirectory);
+    filesystem::create_directories(kTestDirectory);
 
     test_round_trip_stored_and_compressed();
     test_empty_file_representation();
@@ -260,8 +262,8 @@ int main() {
     test_writer_rejects_invalid_stored_block();
     test_reserved_flags();
 
-    std::filesystem::remove_all(kTestDirectory);
-    std::cout << "All CMP2 container tests passed\n";
+    filesystem::remove_all(kTestDirectory);
+    cout << "All CMP2 container tests passed\n";
     return 0;
 }
 

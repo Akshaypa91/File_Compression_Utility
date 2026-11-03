@@ -6,15 +6,17 @@
 #include <sstream>
 #include <utility>
 
+using namespace std;
+
 namespace cmp2 {
 namespace {
 
-constexpr std::uint8_t kLastFlag = 0x01;
-constexpr std::uint8_t kTypeMask = 0x06;
-constexpr std::uint8_t kReservedMask = 0xF8;
+constexpr uint8_t kLastFlag = 0x01;
+constexpr uint8_t kTypeMask = 0x06;
+constexpr uint8_t kReservedMask = 0xF8;
 
-std::string make_message(ErrorCode code, const std::string& detail) {
-    std::ostringstream message;
+string make_message(ErrorCode code, const string& detail) {
+    ostringstream message;
     message << error_code_name(code);
     if (!detail.empty()) {
         message << ": " << detail;
@@ -22,136 +24,136 @@ std::string make_message(ErrorCode code, const std::string& detail) {
     return message.str();
 }
 
-[[noreturn]] void fail(ErrorCode code, const std::string& detail) {
+[[noreturn]] void fail(ErrorCode code, const string& detail) {
     throw ContainerError(code, make_message(code, detail));
 }
 
-void validate_window(std::uint8_t log2Window) {
+void validate_window(uint8_t log2Window) {
     if (log2Window > kMaxWindowLog2) {
         fail(ErrorCode::InvalidWindow,
              "log2Window exceeds the 32 KiB maximum");
     }
 }
 
-std::uint64_t current_position(std::istream& input) {
-    const std::streampos position = input.tellg();
+uint64_t current_position(istream& input) {
+    const streampos position = input.tellg();
     if (position < 0) {
         fail(ErrorCode::FileReadFailed, "unable to determine file position");
     }
-    return static_cast<std::uint64_t>(position);
+    return static_cast<uint64_t>(position);
 }
 
-void ensure_can_read(std::ifstream& input,
-                     std::uint64_t fileSize,
-                     std::uint64_t bytes,
-                     const std::string& field) {
-    const std::streampos position = input.tellg();
+void ensure_can_read(ifstream& input,
+                     uint64_t fileSize,
+                     uint64_t bytes,
+                     const string& field) {
+    const streampos position = input.tellg();
     if (position < 0) {
         fail(ErrorCode::FileReadFailed, "unable to determine file position");
     }
 
-    const auto offset = static_cast<std::uint64_t>(position);
+    const auto offset = static_cast<uint64_t>(position);
     if (offset > fileSize || bytes > fileSize - offset) {
         fail(ErrorCode::TruncatedInput,
              field + " extends beyond the end of the file");
     }
 }
 
-void read_exact(std::ifstream& input,
-                std::uint64_t fileSize,
-                std::uint8_t* destination,
-                std::size_t size,
-                const std::string& field) {
-    ensure_can_read(input, fileSize, static_cast<std::uint64_t>(size), field);
+void read_exact(ifstream& input,
+                uint64_t fileSize,
+                uint8_t* destination,
+                size_t size,
+                const string& field) {
+    ensure_can_read(input, fileSize, static_cast<uint64_t>(size), field);
     if (size == 0) {
         return;
     }
 
     input.read(reinterpret_cast<char*>(destination),
-               static_cast<std::streamsize>(size));
+               static_cast<streamsize>(size));
     if (!input) {
         fail(ErrorCode::FileReadFailed, "failed while reading " + field);
     }
 }
 
-std::uint8_t read_byte(std::ifstream& input,
-                       std::uint64_t fileSize,
-                       const std::string& field) {
-    std::uint8_t byte = 0;
+uint8_t read_byte(ifstream& input,
+                       uint64_t fileSize,
+                       const string& field) {
+    uint8_t byte = 0;
     read_exact(input, fileSize, &byte, 1, field);
     return byte;
 }
 
-void write_exact(std::ofstream& output,
-                 const std::uint8_t* data,
-                 std::size_t size,
-                 const std::string& field) {
+void write_exact(ofstream& output,
+                 const uint8_t* data,
+                 size_t size,
+                 const string& field) {
     if (size == 0) {
         return;
     }
 
     output.write(reinterpret_cast<const char*>(data),
-                 static_cast<std::streamsize>(size));
+                 static_cast<streamsize>(size));
     if (!output) {
         fail(ErrorCode::FileWriteFailed, "failed while writing " + field);
     }
 }
 
-void write_byte(std::ofstream& output,
-                std::uint8_t value,
-                const std::string& field) {
+void write_byte(ofstream& output,
+                uint8_t value,
+                const string& field) {
     write_exact(output, &value, 1, field);
 }
 
-void write_uint32_le(std::ofstream& output,
-                     std::uint32_t value,
-                     const std::string& field) {
-    const std::array<std::uint8_t, 4> bytes{
-        static_cast<std::uint8_t>(value & 0xFFU),
-        static_cast<std::uint8_t>((value >> 8U) & 0xFFU),
-        static_cast<std::uint8_t>((value >> 16U) & 0xFFU),
-        static_cast<std::uint8_t>((value >> 24U) & 0xFFU),
+void write_uint32_le(ofstream& output,
+                     uint32_t value,
+                     const string& field) {
+    const array<uint8_t, 4> bytes{
+        static_cast<uint8_t>(value & 0xFFU),
+        static_cast<uint8_t>((value >> 8U) & 0xFFU),
+        static_cast<uint8_t>((value >> 16U) & 0xFFU),
+        static_cast<uint8_t>((value >> 24U) & 0xFFU),
     };
     write_exact(output, bytes.data(), bytes.size(), field);
 }
 
-std::uint32_t read_uint32_le(std::ifstream& input,
-                             std::uint64_t fileSize,
-                             const std::string& field) {
-    std::array<std::uint8_t, 4> bytes{};
+uint32_t read_uint32_le(ifstream& input,
+                             uint64_t fileSize,
+                             const string& field) {
+    array<uint8_t, 4> bytes{};
     read_exact(input, fileSize, bytes.data(), bytes.size(), field);
 
-    return static_cast<std::uint32_t>(bytes[0]) |
-           (static_cast<std::uint32_t>(bytes[1]) << 8U) |
-           (static_cast<std::uint32_t>(bytes[2]) << 16U) |
-           (static_cast<std::uint32_t>(bytes[3]) << 24U);
+    return static_cast<uint32_t>(bytes[0]) |
+           (static_cast<uint32_t>(bytes[1]) << 8U) |
+           (static_cast<uint32_t>(bytes[2]) << 16U) |
+           (static_cast<uint32_t>(bytes[3]) << 24U);
 }
 
-void write_varint(std::ofstream& output, std::uint64_t value) {
+void write_varint(ofstream& output, uint64_t value) {
     do {
-        std::uint8_t byte = static_cast<std::uint8_t>(value & 0x7FU);
+        uint8_t byte = static_cast<uint8_t>(value & 0x7FU);
         value >>= 7U;
         if (value != 0) {
-            byte = static_cast<std::uint8_t>(byte | 0x80U);
+            byte = static_cast<uint8_t>(byte | 0x80U);
         }
         write_byte(output, byte, "varint");
     } while (value != 0);
 }
 
-std::uint64_t read_varint(std::ifstream& input,
-                          std::uint64_t fileSize,
-                          const std::string& field) {
-    std::uint64_t value = 0;
+uint64_t read_varint(ifstream& input,
+                          uint64_t fileSize,
+                          const string& field) {
+    uint64_t value = 0;
 
-    for (std::size_t index = 0; index < 10; ++index) {
-        const std::uint8_t byte = read_byte(input, fileSize, field);
-        const std::uint8_t data = static_cast<std::uint8_t>(byte & 0x7FU);
+    for (size_t index = 0; index < 10; ++index) {
+        const uint8_t byte = read_byte(input, fileSize, field);
+        const uint8_t data = static_cast<uint8_t>(byte & 0x7FU);
 
         if (index == 9 && data > 1U) {
             fail(ErrorCode::CorruptHeader, field + " overflows uint64_t");
         }
 
-        value |= static_cast<std::uint64_t>(data) << (index * 7U);
+        value |= static_cast<uint64_t>(data) << (index * 7U);
 
         if ((byte & 0x80U) == 0) {
             // Reject non-canonical encodings such as 0x80 0x00.  This keeps
@@ -167,17 +169,17 @@ std::uint64_t read_varint(std::ifstream& input,
     fail(ErrorCode::CorruptHeader, field + " is an unterminated varint");
 }
 
-std::uint8_t make_flags(BlockType type, bool isLast) {
-    const auto typeValue = static_cast<std::uint8_t>(type);
-    return static_cast<std::uint8_t>((isLast ? kLastFlag : 0U) |
+uint8_t make_flags(BlockType type, bool isLast) {
+    const auto typeValue = static_cast<uint8_t>(type);
+    return static_cast<uint8_t>((isLast ? kLastFlag : 0U) |
                                      ((typeValue & 0x03U) << 1U));
 }
 
 void validate_block_for_write(BlockType type,
-                              std::uint64_t sourceLength,
-                              std::uint64_t payloadBits,
-                              const std::uint8_t* data,
-                              std::size_t size) {
+                              uint64_t sourceLength,
+                              uint64_t payloadBits,
+                              const uint8_t* data,
+                              size_t size) {
     if (sourceLength > kMaxSourceBytesPerBlock) {
         fail(ErrorCode::InvalidBlock,
              "sourceLength exceeds the per-block limit");
@@ -190,7 +192,7 @@ void validate_block_for_write(BlockType type,
         fail(ErrorCode::InvalidArgument, "payload data is null");
     }
 
-    const auto payloadBytes = static_cast<std::uint64_t>(size);
+    const auto payloadBytes = static_cast<uint64_t>(size);
     if (payloadBits > payloadBytes * 8ULL) {
         fail(ErrorCode::InvalidBitLength,
              "payloadBits is greater than payloadBytes * 8");
@@ -218,23 +220,23 @@ void validate_block_for_write(BlockType type,
     }
 }
 
-ContainerBlock parse_block(std::ifstream& input,
-                           std::uint64_t fileSize,
+ContainerBlock parse_block(ifstream& input,
+                           uint64_t fileSize,
                            bool previousBlockWasLast,
-                           std::vector<std::uint8_t>& reusablePayload) {
+                           vector<uint8_t>& reusablePayload) {
     if (previousBlockWasLast) {
         fail(ErrorCode::InvalidBlockOrder,
              "cannot read a block after the final block");
     }
 
-    const std::uint8_t flags = read_byte(input, fileSize, "block flags");
+    const uint8_t flags = read_byte(input, fileSize, "block flags");
     if ((flags & kReservedMask) != 0) {
         fail(ErrorCode::InvalidFlags,
              "reserved block flag bits must be zero");
     }
 
-    const auto typeValue = static_cast<std::uint8_t>((flags & kTypeMask) >> 1U);
-    if (typeValue > static_cast<std::uint8_t>(BlockType::Compressed)) {
+    const auto typeValue = static_cast<uint8_t>((flags & kTypeMask) >> 1U);
+    if (typeValue > static_cast<uint8_t>(BlockType::Compressed)) {
         fail(ErrorCode::InvalidBlockType, "unknown block type");
     }
 
@@ -242,7 +244,7 @@ ContainerBlock parse_block(std::ifstream& input,
     block.type = static_cast<BlockType>(typeValue);
     block.isLast = (flags & kLastFlag) != 0;
     block.sourceLength = read_varint(input, fileSize, "sourceLength");
-    const std::uint64_t payloadBytes =
+    const uint64_t payloadBytes =
         read_varint(input, fileSize, "payloadBytes");
     block.payloadBits = read_varint(input, fileSize, "payloadBits");
 
@@ -251,8 +253,8 @@ ContainerBlock parse_block(std::ifstream& input,
              "sourceLength exceeds the per-block limit");
     }
     if (payloadBytes > kMaxPayloadBytesPerBlock ||
-        payloadBytes > static_cast<std::uint64_t>(
-                            std::numeric_limits<std::size_t>::max())) {
+        payloadBytes > static_cast<uint64_t>(
+                            numeric_limits<size_t>::max())) {
         fail(ErrorCode::CorruptHeader,
              "payloadBytes exceeds the per-block limit");
     }
@@ -264,7 +266,7 @@ ContainerBlock parse_block(std::ifstream& input,
     ensure_can_read(input, fileSize, payloadBytes + 4ULL,
                     "payload and block CRC32");
 
-    reusablePayload.resize(static_cast<std::size_t>(payloadBytes));
+    reusablePayload.resize(static_cast<size_t>(payloadBytes));
     read_exact(input, fileSize, reusablePayload.data(), reusablePayload.size(),
                "block payload");
     block.crc32 = read_uint32_le(input, fileSize, "block CRC32");
@@ -327,29 +329,29 @@ const char* error_code_name(ErrorCode code) noexcept {
     return "UNKNOWN_CONTAINER_ERROR";
 }
 
-ContainerError::ContainerError(ErrorCode code, const std::string& message)
-    : std::runtime_error(message), code_(code) {}
+ContainerError::ContainerError(ErrorCode code, const string& message)
+    : runtime_error(message), code_(code) {}
 
-ContainerWriter::ContainerWriter(std::string path,
-                                 std::uint8_t log2Window,
-                                 std::ofstream&& output)
-    : path_(std::move(path)), output_(std::move(output)) {
+ContainerWriter::ContainerWriter(string path,
+                                 uint8_t log2Window,
+                                 ofstream&& output)
+    : path_(move(path)), output_(move(output)) {
     header_.version = kSupportedVersion;
     header_.log2Window = log2Window;
 }
 
-ContainerWriter ContainerWriter::open(const std::string& path,
-                                      std::uint8_t log2Window) {
+ContainerWriter ContainerWriter::open(const string& path,
+                                      uint8_t log2Window) {
     validate_window(log2Window);
 
-    std::ofstream output(path, std::ios::binary | std::ios::trunc);
+    ofstream output(path, ios::binary | ios::trunc);
     if (!output) {
         fail(ErrorCode::FileOpenFailed, "unable to open output file: " + path);
     }
 
-    ContainerWriter writer(path, log2Window, std::move(output));
+    ContainerWriter writer(path, log2Window, move(output));
     write_exact(writer.output_,
-                reinterpret_cast<const std::uint8_t*>(kMagic),
+                reinterpret_cast<const uint8_t*>(kMagic),
                 sizeof(kMagic),
                 "file signature");
     write_byte(writer.output_, kSupportedVersion, "file version");
@@ -358,8 +360,8 @@ ContainerWriter ContainerWriter::open(const std::string& path,
 }
 
 ContainerWriter::ContainerWriter(ContainerWriter&& other) noexcept
-    : path_(std::move(other.path_)),
-      output_(std::move(other.output_)),
+    : path_(move(other.path_)),
+      output_(move(other.output_)),
       header_(other.header_),
       lastBlockWritten_(other.lastBlockWritten_),
       finished_(other.finished_) {
@@ -371,8 +373,8 @@ ContainerWriter& ContainerWriter::operator=(ContainerWriter&& other) noexcept {
         if (output_.is_open()) {
             output_.close();
         }
-        path_ = std::move(other.path_);
-        output_ = std::move(other.output_);
+        path_ = move(other.path_);
+        output_ = move(other.output_);
         header_ = other.header_;
         lastBlockWritten_ = other.lastBlockWritten_;
         finished_ = other.finished_;
@@ -394,11 +396,11 @@ void ContainerWriter::writeBlock(const ContainerBlock& block) {
 
 void ContainerWriter::writeBlock(BlockType type,
                                  bool isLast,
-                                 std::uint64_t sourceLength,
-                                 std::uint64_t payloadBits,
-                                 const std::uint8_t* data,
-                                 std::size_t size,
-                                 std::uint32_t crc32) {
+                                 uint64_t sourceLength,
+                                 uint64_t payloadBits,
+                                 const uint8_t* data,
+                                 size_t size,
+                                 uint32_t crc32) {
     if (finished_) {
         fail(ErrorCode::InvalidBlockOrder,
              "cannot write a block after finish()");
@@ -412,7 +414,7 @@ void ContainerWriter::writeBlock(BlockType type,
     const auto flags = make_flags(type, isLast);
     write_byte(output_, flags, "block flags");
     write_varint(output_, sourceLength);
-    write_varint(output_, static_cast<std::uint64_t>(size));
+    write_varint(output_, static_cast<uint64_t>(size));
     write_varint(output_, payloadBits);
     write_exact(output_, data, size, "block payload");
     write_uint32_le(output_, crc32, "block CRC32");
@@ -442,33 +444,33 @@ void ContainerWriter::finish() {
     finished_ = true;
 }
 
-ContainerReader::ContainerReader(std::string path,
-                                 std::ifstream&& input,
-                                 std::uint64_t fileSize,
+ContainerReader::ContainerReader(string path,
+                                 ifstream&& input,
+                                 uint64_t fileSize,
                                  ContainerHeader header)
-    : path_(std::move(path)),
-      input_(std::move(input)),
+    : path_(move(path)),
+      input_(move(input)),
       fileSize_(fileSize),
       header_(header) {}
 
-ContainerReader ContainerReader::open(const std::string& path) {
-    std::ifstream input(path, std::ios::binary);
+ContainerReader ContainerReader::open(const string& path) {
+    ifstream input(path, ios::binary);
     if (!input) {
         fail(ErrorCode::FileOpenFailed, "unable to open input file: " + path);
     }
 
-    input.seekg(0, std::ios::end);
-    const std::streampos end = input.tellg();
+    input.seekg(0, ios::end);
+    const streampos end = input.tellg();
     if (end < 0) {
         fail(ErrorCode::FileReadFailed, "unable to determine input file size");
     }
-    const auto fileSize = static_cast<std::uint64_t>(end);
-    input.seekg(0, std::ios::beg);
+    const auto fileSize = static_cast<uint64_t>(end);
+    input.seekg(0, ios::beg);
 
-    std::array<std::uint8_t, sizeof(kMagic)> magic{};
+    array<uint8_t, sizeof(kMagic)> magic{};
     read_exact(input, fileSize, magic.data(), magic.size(), "file signature");
-    for (std::size_t index = 0; index < magic.size(); ++index) {
-        if (magic[index] != static_cast<std::uint8_t>(kMagic[index])) {
+    for (size_t index = 0; index < magic.size(); ++index) {
+        if (magic[index] != static_cast<uint8_t>(kMagic[index])) {
             fail(ErrorCode::InvalidSignature, "expected CMP2");
         }
     }
@@ -476,19 +478,19 @@ ContainerReader ContainerReader::open(const std::string& path) {
     const auto version = read_byte(input, fileSize, "file version");
     if (version != kSupportedVersion) {
         fail(ErrorCode::UnsupportedVersion,
-             "unsupported CMP2 version " + std::to_string(version));
+             "unsupported CMP2 version " + to_string(version));
     }
 
     const auto log2Window = read_byte(input, fileSize, "window size");
     validate_window(log2Window);
 
-    return ContainerReader(path, std::move(input), fileSize,
+    return ContainerReader(path, move(input), fileSize,
                            ContainerHeader{version, log2Window});
 }
 
 ContainerReader::ContainerReader(ContainerReader&& other) noexcept
-    : path_(std::move(other.path_)),
-      input_(std::move(other.input_)),
+    : path_(move(other.path_)),
+      input_(move(other.input_)),
       fileSize_(other.fileSize_),
       header_(other.header_),
       lastBlockSeen_(other.lastBlockSeen_),
@@ -501,8 +503,8 @@ ContainerReader& ContainerReader::operator=(ContainerReader&& other) noexcept {
         if (input_.is_open()) {
             input_.close();
         }
-        path_ = std::move(other.path_);
-        input_ = std::move(other.input_);
+        path_ = move(other.path_);
+        input_ = move(other.input_);
         fileSize_ = other.fileSize_;
         header_ = other.header_;
         lastBlockSeen_ = other.lastBlockSeen_;
@@ -522,19 +524,19 @@ bool ContainerReader::hasNextBlock() const {
     if (finished_ || lastBlockSeen_) {
         return false;
     }
-    const auto position = current_position(const_cast<std::ifstream&>(input_));
+    const auto position = current_position(const_cast<ifstream&>(input_));
     return position < fileSize_;
 }
 
 ContainerBlock ContainerReader::readNextBlock() {
-    std::vector<std::uint8_t> reusablePayload;
+    vector<uint8_t> reusablePayload;
     ContainerBlock block = readNextBlock(reusablePayload);
-    block.payload = std::move(reusablePayload);
+    block.payload = move(reusablePayload);
     return block;
 }
 
 ContainerBlock ContainerReader::readNextBlock(
-    std::vector<std::uint8_t>& reusablePayload) {
+    vector<uint8_t>& reusablePayload) {
     if (finished_ || lastBlockSeen_) {
         fail(ErrorCode::InvalidBlockOrder,
              "cannot read a block after the final block");
@@ -572,9 +574,9 @@ void ContainerReader::finish() {
     input_.close();
 }
 
-void write_container(const std::string& path,
-                     std::uint8_t log2Window,
-                     const std::vector<ContainerBlock>& blocks) {
+void write_container(const string& path,
+                     uint8_t log2Window,
+                     const vector<ContainerBlock>& blocks) {
     if (blocks.empty()) {
         fail(ErrorCode::MissingFinalBlock,
              "a CMP2 file must contain at least one block");
@@ -587,7 +589,7 @@ void write_container(const std::string& path,
     writer.finish();
 }
 
-ContainerFile read_container(const std::string& path) {
+ContainerFile read_container(const string& path) {
     ContainerReader reader = ContainerReader::open(path);
     ContainerFile file;
     file.header = reader.header();

@@ -9,6 +9,8 @@
 #include "huffman.h"
 #include "test_util.h"
 
+using namespace std;
+
 // ---------------------------------------------------------------------------
 // Golden vector: input "abcabcabcabcx"
 //   tokens: lit a, lit b, lit c, match(len 9, dist 3), lit x, EOB
@@ -40,7 +42,7 @@ static void testGoldenVector() {
     CHECK(p.symbolCount == 7);                    // 6 litlen symbols + 1 distance symbol
     CHECK(w1::verifyPrefixFree(p));
 
-    std::vector<std::uint8_t> buf(p.totalBytes());
+    vector<uint8_t> buf(p.totalBytes());
     w1::BitWriter w(buf.data(), buf.size());
     CHECK(w1::emit(*tb, p, w) == w1::Status::Ok);
     CHECK(w.finish() == 161);
@@ -53,7 +55,7 @@ static void testGoldenVector() {
 
     // decode it back
     w1::BitReader r(buf.data(), buf.size(), w.bitCount());
-    std::unique_ptr<w1::HuffTables> t(new w1::HuffTables);
+    unique_ptr<w1::HuffTables> t(new w1::HuffTables);
     CHECK(w1::readTables(r, *t) == w1::Status::Ok);
     Recorder rec;
     CHECK(w1::decodeBlock(r, *t, rec) == w1::Status::Ok);
@@ -69,7 +71,7 @@ static void testGoldenVector() {
 static void testEmptyAndTinyBlocks() {
     // a block with no tokens: only EOB, a single symbol with a 1-bit code
     auto tb = newBlock();
-    std::vector<cmp::Tok> out;
+    vector<cmp::Tok> out;
     CHECK(roundTrip(*tb, out));
     CHECK(out.empty());
 
@@ -94,26 +96,26 @@ static void testEmptyAndTinyBlocks() {
 static void testAllLengthsAndDistances() {
     // every legal length and a spread of distances including all bucket boundaries
     auto tb = newBlock();
-    for (std::uint32_t len = 3; len <= 258; ++len) tb->addMatch(len, 1 + (len * 131) % 32768);
-    std::vector<cmp::Tok> out;
+    for (uint32_t len = 3; len <= 258; ++len) tb->addMatch(len, 1 + (len * 131) % 32768);
+    vector<cmp::Tok> out;
     CHECK(roundTrip(*tb, out));
     CHECK(out.size() == tb->n);
-    for (std::uint32_t i = 0; i < tb->n; ++i) CHECK(out[i] == tb->tok[i]);
+    for (uint32_t i = 0; i < tb->n; ++i) CHECK(out[i] == tb->tok[i]);
 
     auto td = newBlock();
     for (unsigned c = 0; c < cmp::kNumDist; ++c) {
-        const std::uint32_t lo = cmp::kTables.distBase[c];
-        const std::uint32_t hi = lo + (1u << cmp::kTables.distExtra[c]) - 1;
+        const uint32_t lo = cmp::kTables.distBase[c];
+        const uint32_t hi = lo + (1u << cmp::kTables.distExtra[c]) - 1;
         td->addMatch(3, lo);
         td->addMatch(258, hi);
         td->addMatch(10, lo + (hi - lo) / 2);
         CHECK(cmp::distSymbol(lo) == c && cmp::distSymbol(hi) == c);
     }
     CHECK(roundTrip(*td, out));
-    for (std::uint32_t i = 0; i < td->n; ++i) CHECK(out[i] == td->tok[i]);
+    for (uint32_t i = 0; i < td->n; ++i) CHECK(out[i] == td->tok[i]);
     CHECK(cmp::distSymbol(32768) == 29);
 
-    for (std::uint32_t len = 3; len <= 258; ++len) {
+    for (uint32_t len = 3; len <= 258; ++len) {
         const unsigned s = cmp::lenSymbol(len);
         CHECK(s >= 257 && s <= 285);
         const unsigned li = s - 257;
@@ -123,9 +125,9 @@ static void testAllLengthsAndDistances() {
 }
 
 static void testRandomRoundTrips() {
-    std::mt19937 rng(2026);
+    mt19937 rng(2026);
     auto tb = newBlock();
-    std::vector<cmp::Tok> out;
+    vector<cmp::Tok> out;
     for (int round = 0; round < 300; ++round) {
         const int mode = round % 6;
         const unsigned count = 1 + rng() % (mode == 5 ? 1 : 30000);
@@ -134,7 +136,7 @@ static void testRandomRoundTrips() {
         CHECK(roundTrip(*tb, out, &p));
         CHECK(out.size() == tb->n);
         bool same = out.size() == tb->n;
-        for (std::uint32_t i = 0; same && i < tb->n; ++i) same = out[i] == tb->tok[i];
+        for (uint32_t i = 0; same && i < tb->n; ++i) same = out[i] == tb->tok[i];
         CHECK(same);
         CHECK(w1::verifyPrefixFree(p));
         for (unsigned i = 0; i < cmp::kNumLitLen; ++i) CHECK(p.litLen[i] <= 15);
@@ -145,21 +147,21 @@ static void testRandomRoundTrips() {
 static void testLengthLimitedBlock() {
     // Fibonacci-skewed literals force the 15-bit limit; the block must still round-trip
     auto tb = newBlock();
-    std::mt19937 rng(1);
+    mt19937 rng(1);
     fillRandomBlock(*tb, rng, 5, 0);
     w1::Plan p = w1::plan(*tb);
     unsigned maxLen = 0;
     for (unsigned i = 0; i < cmp::kNumLitLen; ++i) if (p.litLen[i] > maxLen) maxLen = p.litLen[i];
     CHECK(maxLen == 15);                  // the limit was actually reached, so the fix-up ran
     CHECK(w1::verifyPrefixFree(p));
-    std::vector<cmp::Tok> out;
+    vector<cmp::Tok> out;
     CHECK(roundTrip(*tb, out));
     CHECK(out.size() == tb->n);
 }
 
 static void testEntropyReport() {
     auto tb = newBlock();
-    std::mt19937 rng(3);
+    mt19937 rng(3);
     fillRandomBlock(*tb, rng, 3, 20000);               // skewed literals
     const w1::Plan p = w1::plan(*tb);
     const w1::EntropyReport e = w1::entropyReport(*tb, p);
@@ -185,7 +187,7 @@ static void testErrorHandling() {
     const w1::Plan p = w1::plan(*tb);
 
     // buffer too small
-    std::vector<std::uint8_t> tiny(10);
+    vector<uint8_t> tiny(10);
     w1::BitWriter wt(tiny.data(), tiny.size());
     CHECK(w1::emit(*tb, p, wt) == w1::Status::BufferOverflow);
 
@@ -194,7 +196,7 @@ static void testErrorHandling() {
     bad->addLiteral('a');
     bad->tok[bad->n++] = cmp::mkLit('z');              // token added without counting it
     const w1::Plan pb = w1::plan(*bad);
-    std::vector<std::uint8_t> buf(pb.totalBytes() + 16);
+    vector<uint8_t> buf(pb.totalBytes() + 16);
     w1::BitWriter wb(buf.data(), buf.size());
     CHECK(w1::emit(*bad, pb, wb) == w1::Status::MissingCode);
 
@@ -204,7 +206,7 @@ static void testErrorHandling() {
     over->addLiteral('b');
     ++over->litlenFreq['a'];                           // claims 'a' twice
     const w1::Plan po = w1::plan(*over);
-    std::vector<std::uint8_t> buf2(po.totalBytes() + 16);
+    vector<uint8_t> buf2(po.totalBytes() + 16);
     w1::BitWriter wo(buf2.data(), buf2.size());
     CHECK(w1::emit(*over, po, wo) == w1::Status::PlanMismatch);
 
@@ -212,7 +214,7 @@ static void testErrorHandling() {
     auto d = newBlock();
     d->tok[d->n++] = cmp::kMatchFlag | (0u << 16) | 40000u;
     const w1::Plan pd = w1::plan(*d);
-    std::vector<std::uint8_t> buf3(pd.totalBytes() + 16);
+    vector<uint8_t> buf3(pd.totalBytes() + 16);
     w1::BitWriter wd(buf3.data(), buf3.size());
     CHECK(w1::emit(*d, pd, wd) == w1::Status::InvalidToken);
 }
@@ -220,30 +222,30 @@ static void testErrorHandling() {
 // A valid block, then damage it in every way a bad file could: the decoder must return an
 // error or a result, never crash or read out of bounds (run this under ASan/UBSan).
 static void testCorruptionRobustness() {
-    std::mt19937 rng(77);
+    mt19937 rng(77);
     auto tb = newBlock();
     fillRandomBlock(*tb, rng, 1, 3000);
     const w1::Plan p = w1::plan(*tb);
-    std::vector<std::uint8_t> good(p.totalBytes());
+    vector<uint8_t> good(p.totalBytes());
     w1::BitWriter w(good.data(), good.size());
     CHECK(w1::emit(*tb, p, w) == w1::Status::Ok);
     w.finish();
-    const std::uint64_t bits = w.bitCount();
+    const uint64_t bits = w.bitCount();
 
-    std::unique_ptr<w1::HuffTables> t(new w1::HuffTables);
+    unique_ptr<w1::HuffTables> t(new w1::HuffTables);
     long ok = 0, rejected = 0;
     for (int it = 0; it < 4000; ++it) {
-        std::vector<std::uint8_t> d = good;
-        std::uint64_t useBits = bits;
+        vector<uint8_t> d = good;
+        uint64_t useBits = bits;
         const int kind = it % 4;
         if (kind == 0) {                                   // flip random bits anywhere
-            for (int k = 0; k < 1 + static_cast<int>(rng() % 4); ++k) d[rng() % d.size()] ^= static_cast<std::uint8_t>(1u << (rng() % 8));
+            for (int k = 0; k < 1 + static_cast<int>(rng() % 4); ++k) d[rng() % d.size()] ^= static_cast<uint8_t>(1u << (rng() % 8));
         } else if (kind == 1) {                            // truncate the declared bit length
             useBits = rng() % (bits + 1);
         } else if (kind == 2) {                            // flip bits only inside the header
-            for (int k = 0; k < 3; ++k) d[rng() % 158] ^= static_cast<std::uint8_t>(1u << (rng() % 8));
+            for (int k = 0; k < 3; ++k) d[rng() % 158] ^= static_cast<uint8_t>(1u << (rng() % 8));
         } else {                                           // pure garbage
-            for (auto& b : d) b = static_cast<std::uint8_t>(rng());
+            for (auto& b : d) b = static_cast<uint8_t>(rng());
         }
         w1::BitReader r(d.data(), d.size(), useBits);
         const w1::Status s = w1::readTables(r, *t);
@@ -258,9 +260,9 @@ static void testCorruptionRobustness() {
 
     // the sink can reject an impossible reference: decoding stops with INVALID_TOKEN
     struct Strict {
-        std::uint64_t produced = 0;
-        void lit(std::uint8_t) { ++produced; }
-        bool match(std::uint32_t len, std::uint32_t dist) {
+        uint64_t produced = 0;
+        void lit(uint8_t) { ++produced; }
+        bool match(uint32_t len, uint32_t dist) {
             if (dist > produced) return false;
             produced += len;
             return true;
@@ -269,7 +271,7 @@ static void testCorruptionRobustness() {
     auto m = newBlock();
     m->addMatch(5, 100);                                   // distance 100 with nothing produced yet
     const w1::Plan pm = w1::plan(*m);
-    std::vector<std::uint8_t> bm(pm.totalBytes());
+    vector<uint8_t> bm(pm.totalBytes());
     w1::BitWriter wm(bm.data(), bm.size());
     CHECK(w1::emit(*m, pm, wm) == w1::Status::Ok);
     wm.finish();
@@ -280,13 +282,13 @@ static void testCorruptionRobustness() {
 }
 
 static void testMalformedTables() {
-    std::vector<std::uint8_t> raw(158 + 8, 0);
+    vector<uint8_t> raw(158 + 8, 0);
     auto setLen = [&](unsigned nibbleIndex, unsigned v) {
-        std::uint8_t& b = raw[nibbleIndex / 2];
-        b = (nibbleIndex % 2 == 0) ? static_cast<std::uint8_t>((b & 0x0F) | (v << 4))
-                                   : static_cast<std::uint8_t>((b & 0xF0) | v);
+        uint8_t& b = raw[nibbleIndex / 2];
+        b = (nibbleIndex % 2 == 0) ? static_cast<uint8_t>((b & 0x0F) | (v << 4))
+                                   : static_cast<uint8_t>((b & 0xF0) | v);
     };
-    std::unique_ptr<w1::HuffTables> t(new w1::HuffTables);
+    unique_ptr<w1::HuffTables> t(new w1::HuffTables);
 
     // no EOB code: the block could never end
     {
