@@ -7,6 +7,7 @@
 #include <vector>
 
 using namespace std;
+using namespace w1;
 
 #include "bit_io.h"
 
@@ -35,7 +36,7 @@ string toBits(const vector<uint8_t>& bytes, uint64_t bitCount) {
 void testWriterExactPatterns() {
     {
         vector<uint8_t> bytes(2, 0xFF);
-        w1::BitWriter writer(bytes.data(), bytes.size());
+        BitWriter writer(bytes.data(), bytes.size());
         writer.write(0b101, 3);
         writer.write(0b11, 2);
         CHECK(writer.bitCount() == 5);
@@ -45,7 +46,7 @@ void testWriterExactPatterns() {
     }
     {
         vector<uint8_t> bytes(2, 0);
-        w1::BitWriter writer(bytes.data(), bytes.size());
+        BitWriter writer(bytes.data(), bytes.size());
         writer.write(0b10110110, 8);
         writer.write(0b10101, 5);
         CHECK(writer.bitCount() == 13);
@@ -55,7 +56,7 @@ void testWriterExactPatterns() {
     }
     {
         vector<uint8_t> bytes(4, 0);
-        w1::BitWriter writer(bytes.data(), bytes.size());
+        BitWriter writer(bytes.data(), bytes.size());
         writer.write(0xDEADBEEFu, 32);
         CHECK(writer.finish() == 4);
         CHECK(bytes[0] == 0xDE && bytes[1] == 0xAD);
@@ -63,7 +64,7 @@ void testWriterExactPatterns() {
     }
     {
         vector<uint8_t> bytes(1, 0xFF);
-        w1::BitWriter writer(bytes.data(), bytes.size());
+        BitWriter writer(bytes.data(), bytes.size());
         writer.write(0xFFFFFFFFu, 4);
         writer.write(0u, 4);
         CHECK(writer.finish() == 1);
@@ -71,7 +72,7 @@ void testWriterExactPatterns() {
     }
     {
         vector<uint8_t> bytes(1, 0xA5);
-        w1::BitWriter writer(bytes.data(), bytes.size());
+        BitWriter writer(bytes.data(), bytes.size());
         writer.write(0u, 0);
         CHECK(writer.bitCount() == 0);
         CHECK(writer.finish() == 0);
@@ -81,7 +82,7 @@ void testWriterExactPatterns() {
 
 void testReaderExactAndHardStop() {
     const uint8_t payload[] = {0xB6, 0xA8};
-    w1::BitReader reader(payload, sizeof(payload), 13);
+    BitReader reader(payload, sizeof(payload), 13);
     CHECK(reader.valid());
     uint32_t value = 0;
     CHECK(reader.readBits(8, value) && value == 0xB6);
@@ -89,7 +90,7 @@ void testReaderExactAndHardStop() {
     CHECK(reader.bitsLeft() == 0);
     CHECK(!reader.readBits(1, value));
 
-    w1::BitReader second(payload, sizeof(payload), 13);
+    BitReader second(payload, sizeof(payload), 13);
     CHECK(!second.readBits(14, value));
     CHECK(second.bitsLeft() == 13);
     CHECK(second.readBits(13, value));
@@ -98,14 +99,14 @@ void testReaderExactAndHardStop() {
 
 void testReaderInvalidLength() {
     const uint8_t payload[] = {0x12, 0x34};
-    w1::BitReader reader(payload, sizeof(payload), 17);
+    BitReader reader(payload, sizeof(payload), 17);
     CHECK(!reader.valid());
     CHECK(reader.bitsLeft() == 16);
 }
 
 void testWriterOverflow() {
     vector<uint8_t> bytes(2, 0);
-    w1::BitWriter writer(bytes.data(), bytes.size());
+    BitWriter writer(bytes.data(), bytes.size());
     for (int i = 0; i < 10; ++i) writer.write(0xFFFFFFFFu, 32);
     const size_t written = writer.finish();
     CHECK(writer.overflow());
@@ -132,7 +133,7 @@ void testRandomRoundTrips() {
 
         const size_t capacity = static_cast<size_t>((totalBits + 7) / 8);
         vector<uint8_t> bytes(capacity + 8, 0xCC);
-        w1::BitWriter writer(bytes.data(), bytes.size());
+        BitWriter writer(bytes.data(), bytes.size());
         for (const Chunk& chunk : chunks) writer.write(chunk.value, chunk.bits);
 
         const size_t byteCount = writer.finish();
@@ -140,7 +141,7 @@ void testRandomRoundTrips() {
         CHECK(writer.bitCount() == totalBits);
         CHECK(byteCount == capacity);
 
-        w1::BitReader reader(bytes.data(), byteCount, totalBits);
+        BitReader reader(bytes.data(), byteCount, totalBits);
         CHECK(reader.valid());
         for (const Chunk& chunk : chunks) {
             uint32_t decoded = 0;
@@ -160,7 +161,7 @@ void testReaderAcrossRefillBoundaries() {
 
     const uint64_t totalBits = bytes.size() * 8u;
     const string expected = toBits(bytes, totalBits);
-    w1::BitReader reader(bytes.data(), bytes.size(), totalBits);
+    BitReader reader(bytes.data(), bytes.size(), totalBits);
 
     string actual;
     actual.reserve(expected.size());
