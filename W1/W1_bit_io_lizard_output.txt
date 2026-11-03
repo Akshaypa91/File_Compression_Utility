@@ -1,0 +1,38 @@
+BitReader / BitWriter - Lizard complexity report (focused W1 extract)
+=======================================================================
+
+Source scope:
+  W1/include/bit_io.h
+  W1/src/bit_io.cpp
+
+NOTE:
+  This focused report is extracted from the existing W1_lizard_output.txt
+  in the W1 branch, which already contains the Lizard analysis for these
+  exact BitReader / BitWriter declarations and definitions. Lizard itself
+  was not re-run in this environment.
+
+================================================
+  NLOC    CCN   token  PARAM  length  location
+------------------------------------------------
+      17     4    100      0      18 w1::BitWriter::finish@5-22@W1/src/bit_io.cpp
+       2     1     26      2       2 w1::BitWriter::BitWriter@15-16@W1/include/bit_io.h
+       8     3     82      2       8 w1::BitWriter::write@19-26@W1/include/bit_io.h
+       1     1     10      0       1 w1::BitWriter::bitCount@29-29@W1/include/bit_io.h
+       1     1     10      0       1 w1::BitWriter::overflow@31-31@W1/include/bit_io.h
+      13     2    131      0      13 w1::BitWriter::flush32@36-48@W1/include/bit_io.h
+       8     2     71      3       8 w1::BitReader::BitReader@62-69@W1/include/bit_io.h
+       1     1     10      0       1 w1::BitReader::valid@71-71@W1/include/bit_io.h
+       1     1     12      0       1 w1::BitReader::bitsLeft@72-72@W1/include/bit_io.h
+      16     6    141      0      16 w1::BitReader::refill@75-90@W1/include/bit_io.h
+       3     2     33      1       3 w1::BitReader::peek@93-95@W1/include/bit_io.h
+       5     1     26      1       5 w1::BitReader::consume@96-100@W1/include/bit_io.h
+      11     4     71      2      11 w1::BitReader::readBits@104-114@W1/include/bit_io.h
+
+==============================================================
+Summary of analyzed functions (focused extract)
+--------------------------------------------------------------
+Functions listed: 13
+Source files: 2
+Highest cyclomatic complexity (CCN): 6 (BitReader::refill)
+Highest NLOC: 17 (BitWriter::finish)
+Warnings for these focused functions in the existing full W1 report: none
