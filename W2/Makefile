@@ -30,7 +30,8 @@ TEST_SOURCES = \
 	tests/test_lz77.cpp \
 	src/Token.cpp \
 	src/HashChain.cpp \
-	src/LZ77.cpp
+	src/LZ77.cpp \
+	tests/test_lz77_block_producer.cpp
 
 TEST_OBJECTS = \
 	tests/test_lz77.o \
@@ -38,7 +39,23 @@ TEST_OBJECTS = \
 	src/HashChain.o \
 	src/LZ77.o
 
+TEST_BLOCK_PRODUCER_TARGET = test_lz77_block_producer
+
+TEST_BLOCK_PRODUCER_SOURCES = \
+	tests/test_lz77_block_producer.cpp \
+	src/LZ77BlockProducer.cpp \
+	src/LZ77.cpp \
+	src/Token.cpp \
+	src/HashChain.cpp
+
 all: $(TARGET)
+# Build LZ77 Block Producer test
+$(TEST_BLOCK_PRODUCER_TARGET): $(TEST_BLOCK_PRODUCER_SOURCES)
+	$(CXX) $(CXXFLAGS) $(TEST_BLOCK_PRODUCER_SOURCES) -o $(TEST_BLOCK_PRODUCER_TARGET)
+
+# Run LZ77 Block Producer test
+test-block-producer: $(TEST_BLOCK_PRODUCER_TARGET)
+	./$(TEST_BLOCK_PRODUCER_TARGET)
 
 $(TARGET): $(OBJECTS)
 	$(CXX) $(CXXFLAGS) $(OBJECTS) -o $(TARGET)
@@ -72,6 +89,8 @@ clean:
 	rm -f $(TEST_OBJECTS)
 	rm -f $(TARGET)
 	rm -f $(TEST_TARGET)
+	rm -f $(TEST_BLOCK_PRODUCER_TARGET)
 
 run: $(TARGET)
 	./$(TARGET)
+.PHONY: all test test-block-producer clean run
