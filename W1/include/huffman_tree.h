@@ -10,6 +10,8 @@
 
 #include "bit_io.h"
 
+using namespace std;
+
 namespace w1 {
 
 // Builds Huffman code lengths for `n` symbols (n <= 286) with the min-heap greedy algorithm.
@@ -18,27 +20,27 @@ namespace w1 {
 //   lengths are limited to `maxLen` (<= 15) using the zlib-style overflow fix-up; this only
 //   triggers on very skewed distributions and keeps the Kraft sum <= 1.
 // Ties are broken by (weight, node id), so the result is deterministic everywhere.
-void buildLengths(const std::uint32_t* freq, unsigned n, unsigned maxLen, std::uint8_t* lens);
+void buildLengths(const uint32_t* freq, unsigned n, unsigned maxLen, uint8_t* lens);
 
 // Canonical code assignment: sort by (length, symbol), start at 0, count upward, shift left
 // when the length grows. Codes are right-aligned in `codes[i]`; unused symbols get 0.
-void assignCanonical(const std::uint8_t* lens, unsigned n, std::uint16_t* codes);
+void assignCanonical(const uint8_t* lens, unsigned n, uint16_t* codes);
 
 // Kraft sum scaled by 2^15:  sum over used symbols of 2^(15 - len).
 //   == 1<<15 : complete code.   < 1<<15 : incomplete (valid).   > 1<<15 : over-subscribed (invalid).
-std::uint64_t kraftSum(const std::uint8_t* lens, unsigned n);
+uint64_t kraftSum(const uint8_t* lens, unsigned n);
 
 // Explicit prefix-free check: Kraft sum <= 1 AND no code is a prefix of (or equal to) another.
-bool verifyPrefixFree(const std::uint8_t* lens, const std::uint16_t* codes, unsigned n);
+bool verifyPrefixFree(const uint8_t* lens, const uint16_t* codes, unsigned n);
 
 // Reference decoder: a binary trie of the canonical codes, decoded by walking it bit by bit.
 // This is the textbook "decode by walking the Huffman trie". The production decoder uses
 // table lookup instead, and the tests check that both give identical results.
 struct CodeTrie {
-    std::vector<int> child0, child1;   // -1 = none
-    std::vector<int> symbol;           // -1 = internal node
+    vector<int> child0, child1;   // -1 = none
+    vector<int> symbol;           // -1 = internal node
 };
-bool buildTrie(const std::uint8_t* lens, const std::uint16_t* codes, unsigned n, CodeTrie& trie);
+bool buildTrie(const uint8_t* lens, const uint16_t* codes, unsigned n, CodeTrie& trie);
 // Returns the decoded symbol, or -1 if the bits run out or hit an unused branch.
 int trieDecode(const CodeTrie& trie, BitReader& reader);
 

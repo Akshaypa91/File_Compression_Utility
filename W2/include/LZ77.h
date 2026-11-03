@@ -5,6 +5,8 @@
 #include "symbols.hpp"
 #include "HashChain.h"
 
+using namespace std;
+
 // LZ77 configuration
 constexpr int LZ77_HASH_SIZE = 32768;
 constexpr int LZ77_WINDOW_SIZE = 32768;
@@ -17,8 +19,8 @@ namespace cmp {
 // Store generated tokens and symbol frequencies in TokenBlock.
 bool compressLZ77(
     TokenBlock& block,
-    const std::uint8_t* src,
-    std::uint32_t srcLen
+    const uint8_t* src,
+    uint32_t srcLen
 );
 
 } // namespace cmp

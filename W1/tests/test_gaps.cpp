@@ -10,6 +10,8 @@
 #include "min_heap.h"
 #include "test_util.h"
 
+using namespace std;
+
 // ---------- helpers ---------------------------------------------------------
 // Builds a block by hand: a header with chosen code lengths, then a payload given as text
 // such as "0110". This lets a test control every bit the decoder sees (no emit() needed).
@@ -17,16 +19,16 @@
 // deliberate: gcov drops branch information for template code (decodeBlock) that is
 // instantiated with two different sink types in one program, and test_huffman.cpp already
 // does that (Recorder + Strict). The "sink rejects a match" case is asserted there.
-static w1::Status decodeHandBuilt(const std::uint8_t* lit, const std::uint8_t* dist,
-                                  const std::string& payload) {
-    std::vector<std::uint8_t> buf((w1::kHeaderBits + payload.size() + 7) / 8 + 8, 0);
+static w1::Status decodeHandBuilt(const uint8_t* lit, const uint8_t* dist,
+                                  const string& payload) {
+    vector<uint8_t> buf((w1::kHeaderBits + payload.size() + 7) / 8 + 8, 0);
     w1::BitWriter w(buf.data(), buf.size());
     for (unsigned i = 0; i < cmp::kNumLitLen; ++i) w.write(lit[i], 4);
     for (unsigned i = 0; i < cmp::kNumDist; ++i) w.write(dist[i], 4);
     for (char c : payload) w.write(c == '1' ? 1u : 0u, 1);
-    const std::size_t bytes = w.finish();
+    const size_t bytes = w.finish();
     w1::BitReader r(buf.data(), bytes, w.bitCount());
-    std::unique_ptr<w1::HuffTables> t(new w1::HuffTables);
+    unique_ptr<w1::HuffTables> t(new w1::HuffTables);
     const w1::Status s = w1::readTables(r, *t);
     if (s != w1::Status::Ok) return s;
     Recorder rec;
@@ -34,7 +36,7 @@ static w1::Status decodeHandBuilt(const std::uint8_t* lit, const std::uint8_t* d
 }
 
 // The golden block (abcabcabcabcx) emitted into `buf`; returns the byte count.
-static std::size_t buildGolden(std::vector<std::uint8_t>& buf, std::uint64_t& bits) {
+static size_t buildGolden(vector<uint8_t>& buf, uint64_t& bits) {
     auto tb = newBlock();
     tb->addLiteral('a');
     tb->addLiteral('b');
@@ -45,15 +47,15 @@ static std::size_t buildGolden(std::vector<std::uint8_t>& buf, std::uint64_t& bi
     buf.assign(p.totalBytes(), 0);
     w1::BitWriter w(buf.data(), buf.size());
     CHECK(w1::emit(*tb, p, w) == w1::Status::Ok);
-    const std::size_t bytes = w.finish();
+    const size_t bytes = w.finish();
     bits = w.bitCount();
     return bytes;
 }
 
-static w1::Status decodeGolden(const std::vector<std::uint8_t>& buf, std::size_t bytes,
-                               std::uint64_t bits, bool onlyTables = false) {
+static w1::Status decodeGolden(const vector<uint8_t>& buf, size_t bytes,
+                               uint64_t bits, bool onlyTables = false) {
     w1::BitReader r(buf.data(), bytes, bits);
-    std::unique_ptr<w1::HuffTables> t(new w1::HuffTables);
+    unique_ptr<w1::HuffTables> t(new w1::HuffTables);
     const w1::Status s = w1::readTables(r, *t);
     if (s != w1::Status::Ok || onlyTables) return s;
     Recorder rec;
@@ -62,20 +64,20 @@ static w1::Status decodeGolden(const std::vector<std::uint8_t>& buf, std::size_t
 
 // ---------- 1. every Status has a readable, unique name (closes huffman.cpp 8-20) ----
 static void testStatusNames() {
-    std::set<std::string> seen;
+    set<string> seen;
     for (int i = 0; i <= 8; ++i) {
         const char* n = w1::statusName(static_cast<w1::Status>(i));
         CHECK(n != nullptr);
-        CHECK(std::string(n) != "UNKNOWN");
+        CHECK(string(n) != "UNKNOWN");
         seen.insert(n);
     }
     CHECK(seen.size() == 9);                                   // all names different
-    CHECK(std::string(w1::statusName(static_cast<w1::Status>(99))) == "UNKNOWN");
+    CHECK(string(w1::statusName(static_cast<w1::Status>(99))) == "UNKNOWN");
 }
 
 // ---------- 2. bit I/O gaps (closes bit_io.cpp:16 and bit_io.h peek(0)) --------------
 static void testFinishOverflow() {
-    std::uint8_t one[1] = {0};
+    uint8_t one[1] = {0};
     w1::BitWriter w(one, 1);
     w.write(0xABC, 12);               // 12 bits pending, nothing flushed yet
     CHECK(!w.overflow());
@@ -85,7 +87,7 @@ static void testFinishOverflow() {
 }
 
 static void testPeekZero() {
-    const std::uint8_t d[1] = {0xFF};
+    const uint8_t d[1] = {0xFF};
     w1::BitReader r(d, 1, 8);
     CHECK(r.peek(0) == 0);            // BVA: n = 0
     r.refill();
@@ -94,8 +96,8 @@ static void testPeekZero() {
 
 // ---------- 3. decoder statuses asserted exactly (BP on decodeSymbol/decodeBlock) ----
 static void testDecoderStatuses() {
-    std::uint8_t lit[cmp::kNumLitLen] = {};
-    std::uint8_t dist[cmp::kNumDist] = {};
+    uint8_t lit[cmp::kNumLitLen] = {};
+    uint8_t dist[cmp::kNumDist] = {};
 
     // Only EOB has a code: length 1, code "0".
     lit[256] = 1;
@@ -129,9 +131,9 @@ static void testDecoderStatuses() {
 
 // ---------- 4. boundary values on payloadBits (BVA) ----------------------------------
 static void testPayloadBitsBoundaries() {
-    std::vector<std::uint8_t> buf;
-    std::uint64_t bits = 0;
-    const std::size_t bytes = buildGolden(buf, bits);
+    vector<uint8_t> buf;
+    uint64_t bits = 0;
+    const size_t bytes = buildGolden(buf, bits);
     CHECK(bits == 1281);
 
     CHECK(decodeGolden(buf, bytes, bits) == w1::Status::Ok);                       // exact
@@ -146,7 +148,7 @@ static void testPayloadBitsBoundaries() {
 static void testEmitErrors() {
     auto tb = newBlock();
     tb->addLiteral('a');
-    std::vector<std::uint8_t> buf(w1::kHeaderBits / 8 + 64);
+    vector<uint8_t> buf(w1::kHeaderBits / 8 + 64);
 
     // guard, first operand: a plan that is not Ok
     w1::Plan p = w1::plan(*tb);
@@ -176,7 +178,7 @@ static void testEmitErrors() {
     // BVA on the distance field: field 32767 = distance 32768 is legal, field 32768 is not
     auto ok = newBlock();
     ok->addMatch(3, 32768);
-    std::vector<cmp::Tok> out;
+    vector<cmp::Tok> out;
     CHECK(roundTrip(*ok, out));
     auto bad = newBlock();
     bad->tok[bad->n++] = cmp::kMatchFlag | 32768u;            // distance 32769
@@ -191,7 +193,7 @@ static void testEobAndEmptyPlan() {
     tb->addLiteral('b');
     tb->litlenFreq[cmp::kEob] = 0;                            // a block built without reset()'s EOB count
     w1::Plan p;
-    std::vector<cmp::Tok> out;
+    vector<cmp::Tok> out;
     CHECK(roundTrip(*tb, out, &p));                           // plan() repairs it, emit/decode still agree
     CHECK(p.litLen[cmp::kEob] > 0);
     CHECK(out.size() == 2);
@@ -224,9 +226,9 @@ static void testVerifyPlanNegative() {
 
 // ---------- 8. buildDecodeTable length check (huffman.cpp 106) -----------------------
 static void testDecodeTableBadLength() {
-    std::uint8_t lens[cmp::kNumLitLen] = {};
+    uint8_t lens[cmp::kNumLitLen] = {};
     lens[0] = 16;                                             // BVA: 15 is the maximum
-    std::unique_ptr<w1::DecodeTable> t(new w1::DecodeTable);
+    unique_ptr<w1::DecodeTable> t(new w1::DecodeTable);
     CHECK(w1::buildDecodeTable(lens, cmp::kNumLitLen, *t) == w1::Status::InvalidCodeTable);
     lens[0] = 15;
     CHECK(w1::buildDecodeTable(lens, cmp::kNumLitLen, *t) == w1::Status::Ok);
@@ -243,40 +245,40 @@ static void testHeapCapacity() {
 }
 
 // ---------- 10. buildLengths: pinned answers and guards (huffman_tree.cpp 16,21,77) --
-static std::uint64_t cost(const std::uint32_t* f, const std::uint8_t* l, unsigned n) {
-    std::uint64_t c = 0;
-    for (unsigned i = 0; i < n; ++i) c += static_cast<std::uint64_t>(f[i]) * l[i];
+static uint64_t cost(const uint32_t* f, const uint8_t* l, unsigned n) {
+    uint64_t c = 0;
+    for (unsigned i = 0; i < n; ++i) c += static_cast<uint64_t>(f[i]) * l[i];
     return c;
 }
 
 static void testBuildLengthsPinned() {
-    std::uint8_t l[5];
-    const std::uint32_t f[5] = {1, 1, 2, 4, 8};
+    uint8_t l[5];
+    const uint32_t f[5] = {1, 1, 2, 4, 8};
 
     // no limit needed (maxLen above 15 is clamped to 15): natural Huffman lengths
     w1::buildLengths(f, 5, 20, l);
-    const std::uint8_t natural[5] = {4, 4, 3, 2, 1};
+    const uint8_t natural[5] = {4, 4, 3, 2, 1};
     for (int i = 0; i < 5; ++i) CHECK(l[i] == natural[i]);
     CHECK(cost(f, l, 5) == 30);
 
     // limit 3: A and B are too deep. One fix-up step; rarest four symbols get length 3.
     w1::buildLengths(f, 5, 3, l);
-    const std::uint8_t limited3[5] = {3, 3, 3, 3, 1};
+    const uint8_t limited3[5] = {3, 3, 3, 3, 1};
     for (int i = 0; i < 5; ++i) CHECK(l[i] == limited3[i]);
     CHECK(cost(f, l, 5) == 32);                               // 2 bits worse than optimal
     CHECK(w1::kraftSum(l, 5) == (1u << 15));
 
     // limit 2 on four symbols: the fix-up scan starts at level 1 (bits > 1 is false)
-    const std::uint32_t g[4] = {1, 1, 2, 4};
-    std::uint8_t l4[4];
+    const uint32_t g[4] = {1, 1, 2, 4};
+    uint8_t l4[4];
     w1::buildLengths(g, 4, 2, l4);
     for (int i = 0; i < 4; ++i) CHECK(l4[i] == 2);
     CHECK(w1::kraftSum(l4, 4) == (1u << 15));
 
     // an alphabet bigger than 286 is cut off: symbols from 286 up are ignored
-    std::vector<std::uint32_t> big(300, 0);
+    vector<uint32_t> big(300, 0);
     big[0] = 1; big[1] = 1; big[299] = 5;
-    std::vector<std::uint8_t> bl(300, 9);
+    vector<uint8_t> bl(300, 9);
     w1::buildLengths(big.data(), 300, 15, bl.data());
     CHECK(bl[0] == 1 && bl[1] == 1 && bl[299] == 0);
 }
@@ -285,40 +287,40 @@ static void testBuildLengthsPinned() {
 static void testTrieEdges() {
     w1::CodeTrie t;
     {   // a code that is a prefix of a later code: "0" then "01"
-        const std::uint8_t lens[2] = {1, 2};
-        const std::uint16_t codes[2] = {0b0, 0b01};
+        const uint8_t lens[2] = {1, 2};
+        const uint16_t codes[2] = {0b0, 0b01};
         CHECK(!w1::buildTrie(lens, codes, 2, t));
     }
     {   // the same code twice
-        const std::uint8_t lens[2] = {2, 2};
-        const std::uint16_t codes[2] = {0b10, 0b10};
+        const uint8_t lens[2] = {2, 2};
+        const uint16_t codes[2] = {0b10, 0b10};
         CHECK(!w1::buildTrie(lens, codes, 2, t));
     }
     {   // a later code that is a prefix of an earlier one: "10" then "1"
-        const std::uint8_t lens[2] = {2, 1};
-        const std::uint16_t codes[2] = {0b10, 0b1};
+        const uint8_t lens[2] = {2, 1};
+        const uint16_t codes[2] = {0b10, 0b1};
         CHECK(!w1::buildTrie(lens, codes, 2, t));
     }
     {   // same, through the other child: "11" then "1"
-        const std::uint8_t lens[2] = {2, 1};
-        const std::uint16_t codes[2] = {0b11, 0b1};
+        const uint8_t lens[2] = {2, 1};
+        const uint16_t codes[2] = {0b11, 0b1};
         CHECK(!w1::buildTrie(lens, codes, 2, t));
     }
     {   // decoding with no bits left returns -1
-        const std::uint8_t lens[3] = {1, 2, 2};
-        std::uint16_t codes[3];
+        const uint8_t lens[3] = {1, 2, 2};
+        uint16_t codes[3];
         w1::assignCanonical(lens, 3, codes);
         CHECK(w1::buildTrie(lens, codes, 3, t));
-        const std::uint8_t d[1] = {0};
+        const uint8_t d[1] = {0};
         w1::BitReader r(d, 1, 0);
         CHECK(w1::trieDecode(t, r) == -1);
     }
     {   // incomplete code {00, 01}: a leading 1 falls off the trie
-        const std::uint8_t lens[2] = {2, 2};
-        std::uint16_t codes[2];
+        const uint8_t lens[2] = {2, 2};
+        uint16_t codes[2];
         w1::assignCanonical(lens, 2, codes);
         CHECK(w1::buildTrie(lens, codes, 2, t));
-        const std::uint8_t d[1] = {0x80};
+        const uint8_t d[1] = {0x80};
         w1::BitReader r(d, 1, 1);
         CHECK(w1::trieDecode(t, r) == -1);
     }
@@ -326,10 +328,10 @@ static void testTrieEdges() {
 
 // ---------- 12. blocks exactly at capacity (BVA on token count) ----------------------
 static void testFullBlocks() {
-    std::vector<cmp::Tok> out;
+    vector<cmp::Tok> out;
 
     auto lits = newBlock();                                   // 32768 literal words
-    for (unsigned i = 0; i < cmp::kBlockTokens; ++i) lits->addLiteral(static_cast<std::uint8_t>(i * 7));
+    for (unsigned i = 0; i < cmp::kBlockTokens; ++i) lits->addLiteral(static_cast<uint8_t>(i * 7));
     CHECK(lits->full() && lits->n == cmp::kBlockTokens);
     CHECK(roundTrip(*lits, out));
     CHECK(out.size() == cmp::kBlockTokens);
@@ -339,7 +341,7 @@ static void testFullBlocks() {
     CHECK(pairs->n == cmp::kBlockTokens);
     CHECK(roundTrip(*pairs, out));
     bool same = out.size() == pairs->n;
-    for (std::uint32_t i = 0; same && i < pairs->n; ++i) same = out[i] == pairs->tok[i];
+    for (uint32_t i = 0; same && i < pairs->n; ++i) same = out[i] == pairs->tok[i];
     CHECK(same);
 }
 

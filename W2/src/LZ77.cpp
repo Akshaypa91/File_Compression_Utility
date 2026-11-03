@@ -4,19 +4,21 @@
 
 #include <cstdint>
 
+using namespace std;
+
 namespace
 {
     // Hash three consecutive bytes to find possible matches.
-    std::uint32_t hashThreeBytes(
-        const std::uint8_t* input,
+    uint32_t hashThreeBytes(
+        const uint8_t* input,
         int position
     )
     {
-        std::uint32_t a = input[position];
-        std::uint32_t b = input[position + 1];
-        std::uint32_t c = input[position + 2];
+        uint32_t a = input[position];
+        uint32_t b = input[position + 1];
+        uint32_t c = input[position + 2];
 
-        std::uint32_t hash =
+        uint32_t hash =
             a * 257u +
             b * 263u +
             c * 269u;
@@ -28,7 +30,7 @@ namespace
     // Insert a valid position into the hash chain.
     void insertPosition(
         HashChain* chain,
-        const std::uint8_t* input,
+        const uint8_t* input,
         int position,
         int inputSize
     )
@@ -38,7 +40,7 @@ namespace
             return;
         }
 
-        std::uint32_t hash =
+        uint32_t hash =
             hashThreeBytes(input, position);
 
         insertHashPosition(
@@ -61,8 +63,8 @@ namespace cmp
 
 bool compressLZ77(
     TokenBlock& block,
-    const std::uint8_t* src,
-    std::uint32_t srcLen
+    const uint8_t* src,
+    uint32_t srcLen
 )
 {
     if (srcLen > 0 && src == nullptr)
@@ -82,7 +84,7 @@ bool compressLZ77(
     }
 
     // The current hash-chain API uses int positions.
-    if (srcLen > static_cast<std::uint32_t>(INT32_MAX))
+    if (srcLen > static_cast<uint32_t>(INT32_MAX))
     {
         return false;
     }
@@ -109,7 +111,7 @@ bool compressLZ77(
         // A three-byte hash requires at least three input bytes.
         if (current + 2 < inputSize)
         {
-            std::uint32_t hash =
+            uint32_t hash =
                 hashThreeBytes(src, current);
 
             int candidate =
@@ -177,11 +179,11 @@ bool compressLZ77(
             // Emit a match followed by its next literal.
             Token token{};
 
-            token.offset = static_cast<std::uint32_t>(
+            token.offset = static_cast<uint32_t>(
                 current - bestPosition
             );
 
-            token.length = static_cast<std::uint32_t>(
+            token.length = static_cast<uint32_t>(
                 bestLength
             );
 
