@@ -6,10 +6,10 @@
 #include <string>
 #include <vector>
 
-#include "bit_io.h"
-
 using namespace std;
 using namespace w1;
+
+#include "bit_io.h"
 
 namespace {
 int failures = 0;
@@ -18,7 +18,7 @@ int checks = 0;
 #define CHECK(condition) do { \
     ++checks; \
     if (!(condition)) { \
-        fprintf(stderr, "FAIL %s:%d: %s\n", __FILE__, __LINE__, #condition); \
+        fprintf(stderr, "FAIL %s:%d: %s\\n", __FILE__, __LINE__, #condition); \
         ++failures; \
     } \
 } while (false)
@@ -189,9 +189,9 @@ int main() {
     testReaderAcrossRefillBoundaries();
 
     if (failures == 0) {
-        printf("BitReader/BitWriter: PASS (%d checks)\n", checks);
+        printf("BitReader/BitWriter: PASS (%d checks)\\n", checks);
         return 0;
     }
-    printf("BitReader/BitWriter: FAIL (%d/%d checks failed)\n", failures, checks);
+    printf("BitReader/BitWriter: FAIL (%d/%d checks failed)\\n", failures, checks);
     return 1;
 }
