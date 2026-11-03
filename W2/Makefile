@@ -30,8 +30,7 @@ TEST_SOURCES = \
 	tests/test_lz77.cpp \
 	src/Token.cpp \
 	src/HashChain.cpp \
-	src/LZ77.cpp \
-	tests/test_lz77_block_producer.cpp
+	src/LZ77.cpp 
 
 TEST_OBJECTS = \
 	tests/test_lz77.o \
@@ -40,6 +39,7 @@ TEST_OBJECTS = \
 	src/LZ77.o
 
 TEST_BLOCK_PRODUCER_TARGET = test_lz77_block_producer
+HASHCHAIN_TEST_TARGET = test_hashchain
 
 TEST_BLOCK_PRODUCER_SOURCES = \
 	tests/test_lz77_block_producer.cpp \
@@ -47,6 +47,12 @@ TEST_BLOCK_PRODUCER_SOURCES = \
 	src/LZ77.cpp \
 	src/Token.cpp \
 	src/HashChain.cpp
+
+$(HASHCHAIN_TEST_TARGET): tests/test_hashchain.cpp src/HashChain.cpp
+	$(CXX) $(CXXFLAGS) tests/test_hashchain.cpp src/HashChain.cpp -o $(HASHCHAIN_TEST_TARGET)
+
+test-hashchain: $(HASHCHAIN_TEST_TARGET)
+	./$(HASHCHAIN_TEST_TARGET)
 
 all: $(TARGET)
 # Build LZ77 Block Producer test
@@ -75,6 +81,8 @@ src/LZ77.o: src/LZ77.cpp include/LZ77.h include/Token.h include/HashChain.h
 src/LZ77BlockProducer.o: src/LZ77BlockProducer.cpp include/LZ77BlockProducer.h include/LZ77.h
 	$(CXX) $(CXXFLAGS) -c src/LZ77BlockProducer.cpp -o src/LZ77BlockProducer.o
 
+
+
 test: $(TEST_TARGET)
 		./$(TEST_TARGET)
 
@@ -90,7 +98,8 @@ clean:
 	rm -f $(TARGET)
 	rm -f $(TEST_TARGET)
 	rm -f $(TEST_BLOCK_PRODUCER_TARGET)
+	rm -f $(HASHCHAIN_TEST_TARGET)
 
 run: $(TARGET)
 	./$(TARGET)
-.PHONY: all test test-block-producer clean run
+.PHONY: all test test-block-producer test-hashchain clean run
