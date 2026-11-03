@@ -1,0 +1,15 @@
+In file included from c:\mingw\lib\gcc\mingw32\6.3.0\include\c++\random:51:0,
+                 from W1/aditya_tests/test_all.cpp:13:
+c:\mingw\lib\gcc\mingw32\6.3.0\include\c++\bits\random.tcc: In member function 'std::mersenne_twister_engine<_UIntType, __w, __n, __m, __r, __a, __u, __d, __s, __b, __t, __c, __l, __f>::result_type std::mersenne_twister_engine<_UIntType, __w, __n, __m, __r, __a, __u, __d, __s, __b, __t, __c, __l, __f>::operator()() [with _UIntType = long long unsigned int; unsigned int __w = 64u; unsigned int __n = 312u; unsigned int __m = 156u; unsigned int __r = 31u; _UIntType __a = 13043109905998158313ull; unsigned int __u = 29u; _UIntType __d = 6148914691236517205ull; unsigned int __s = 17u; _UIntType __b = 8202884508482404352ull; unsigned int __t = 37u; _UIntType __c = 18444473444759240704ull; unsigned int __l = 43u; _UIntType __f = 6364136223846793005ull]':
+c:\mingw\lib\gcc\mingw32\6.3.0\include\c++\bits\random.tcc:453:5: internal compiler error: in pp_format, at pretty-print.c:630
+     mersenne_twister_engine<_UIntType, __w, __n, __m, __r, __a, __u, __d,
+     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        __s, __b, __t, __c, __l, __f>::
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+c:\mingw\lib\gcc\mingw32\6.3.0\include\c++\bits\random.tcc:453:5: internal compiler error: Aborted
+g++.exe: internal compiler error: Aborted (program cc1plus)
+Please submit a full bug report,
+with preprocessed source if appropriate.
+See <http://gcc.gnu.org/bugs.html> for instructions.
+Sanitizer build not supported by toolchain (missing libasan/libubsan on Windows MinGW).

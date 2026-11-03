@@ -1,0 +1,4 @@
+=== Machine Information ===
+model name	: Intel(R) Core(TM) Ultra 5 125H
+CPU threads: 18
+g++.exe (MinGW.org GCC-6.3.0-1) 6.3.0
