@@ -184,10 +184,10 @@ namespace cmp
                     freeHashChain(&chain);
                     return false;
                 }
-                printf("Token: {%u, %u, '%c'}\n",
-                       token.offset,
-                       token.length,
-                       token.nextChar);
+                // printf("Token: {%u, %u, '%c'}\n",
+                //        token.offset,
+                //        token.length,
+                //        token.nextChar);
 
                 // Insert the consumed positions into the hash chain.
                 int advance = bestLength + 1;
@@ -221,10 +221,10 @@ namespace cmp
                     freeHashChain(&chain);
                     return false;
                 }
-                printf("Token: {%u, %u, '%c'}\n",
-                       token.offset,
-                       token.length,
-                       token.nextChar);
+                // printf("Token: {%u, %u, '%c'}\n",
+                //        token.offset,
+                //        token.length,
+                //        token.nextChar);
 
                 insertPosition(
                     &chain,

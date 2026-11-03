@@ -177,8 +177,9 @@ int main(int argc, char* argv[])
     if (!cmp::compressLZ77(
             block,
             input,
-            inputSize,
-            LZ77_WINDOW_SIZE))
+            inputSize
+           // LZ77_WINDOW_SIZE
+           ))
     {
         printf("Error: LZ77 compression failed.\n");
         free(input);
