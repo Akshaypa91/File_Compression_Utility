@@ -2,13 +2,13 @@
 // Extended unit tests for cmp2::ContainerWriter and cmp2::ContainerReader.
 //
 // The original test_container_format.cpp covered the basic round-trip, empty
-// file, streaming API, and several error codes.  This file fills the remaining
-// gaps from the W3 unit-testing plan:
+// file, streaming API, and several error codes. This file provides comprehensive
+// coverage for all remaining edge cases and invariants from the CMP2 container plan:
 //
 // ContainerWriter gaps (CW-U-xx):
 //   CW-U-01  Write a block after finish() -> InvalidBlockOrder
 //   CW-U-02  Write a second block after the final block -> InvalidBlockOrder
-//   CW-U-03  Empty payload vector but payloadBits > 0 -> InvalidArgument
+//   CW-U-03  Empty payload vector but payloadBits > 0 -> InvalidBitLength
 //   CW-U-04  sourceLength > kMaxSourceBytesPerBlock -> InvalidBlock
 //   CW-U-05  payloadBits > payloadBytes*8 -> InvalidBitLength
 //   CW-U-06  Compressed block with sourceLength = 0 -> InvalidBlock
@@ -17,6 +17,7 @@
 //   CW-U-09  Three-block file: only last has isLast flag
 //   CW-U-10  CRC field is stored verbatim (container does NOT recompute it)
 //   CW-U-11  Large sourceLength (varint > 1 byte) is preserved exactly
+//   CW-U-12  Null pointer with size > 0 on writeBlock overload -> InvalidArgument
 //
 // ContainerReader gaps (CR-U-xx):
 //   CR-U-01  Open a nonexistent file -> FileOpenFailed
@@ -31,6 +32,10 @@
 //   CR-U-10  CRC value 0x00000000 round-trips correctly
 //   CR-U-11  CRC value 0xFFFFFFFF round-trips correctly
 //   CR-U-12  hasNextBlock() returns false after the final block is read
+//   CR-U-13  Varint 64-bit overflow (data > 1 at index 9) -> CorruptHeader
+//   CR-U-14  Trailing data after final block -> TrailingData
+//   CR-U-15  Truncated payload extends beyond end of file -> TruncatedInput
+//   CR-U-16  readNextBlock(reusablePayload) overload reuses caller buffer
 
 #include "container_format.hpp"
 
@@ -128,13 +133,13 @@ static std::vector<std::uint8_t> read_bytes(const std::string& path) {
 }
 
 // ---------------------------------------------------------------------------
-// Block-building helpers (mirror those in test_container_format.cpp)
+// Block-building helpers
 // ---------------------------------------------------------------------------
 static ContainerBlock make_stored(bool last = true) {
     ContainerBlock b;
-    b.type        = BlockType::Stored;
-    b.isLast      = last;
-    b.payload     = {0xDE, 0xAD, 0xBE, 0xEF};
+    b.type         = BlockType::Stored;
+    b.isLast       = last;
+    b.payload      = {0xDE, 0xAD, 0xBE, 0xEF};
     b.sourceLength = b.payload.size();
     b.payloadBits  = b.payload.size() * 8ULL;
     b.crc32        = 0xABCD1234U;
@@ -143,15 +148,14 @@ static ContainerBlock make_stored(bool last = true) {
 
 static ContainerBlock make_compressed(bool last = true) {
     ContainerBlock b;
-    b.type        = BlockType::Compressed;
-    b.isLast      = last;
+    b.type         = BlockType::Compressed;
+    b.isLast       = last;
     b.sourceLength = 42;
-    b.payload     = {0x1A, 0x2B};
+    b.payload      = {0x1A, 0x2B};
     b.payloadBits  = 11;
     b.crc32        = 0x11223344U;
     return b;
 }
-// suppress unused-function warning for make_compressed
 static const auto& _use_make_compressed = make_compressed;
 
 // Write a minimal valid single-stored-block archive and return the path.
@@ -190,9 +194,6 @@ static void test_write_after_last_block() {
 }
 
 // CW-U-03: Empty payload vector but payloadBits > 0 -> InvalidBitLength.
-// validate_block_for_write checks (payloadBits > payloadBytes*8) before the
-// Stored-specific checks.  An empty payload (payloadBytes=0) with payloadBits=32
-// violates 32 > 0*8, so InvalidBitLength is raised.
 static void test_null_payload_with_nonzero_size() {
     std::cout << "\n[CW-U-03] Empty payload vector but payloadBits > 0\n";
     const std::string path = tp("cw_null_payload.cmp2");
@@ -305,7 +306,7 @@ static void test_crc_stored_verbatim() {
     std::cout << "\n[CW-U-10] CRC stored verbatim\n";
     const std::string path = tp("cw_crc_verbatim.cmp2");
     ContainerBlock b = make_stored(true);
-    b.crc32 = 0xDEADBEEFU;  // obviously wrong CRC for the payload bytes
+    b.crc32 = 0xDEADBEEFU;  // caller-supplied CRC
     cmp2::write_container(path, 15, {b});
 
     const auto file = cmp2::read_container(path);
@@ -314,11 +315,9 @@ static void test_crc_stored_verbatim() {
 }
 
 // CW-U-11: Large sourceLength (requires multi-byte varint) is preserved exactly.
-// kMaxSourceBytesPerBlock = 1 MiB = 1048576.  We use a value > 127 (needs 2 varint bytes).
 static void test_large_source_length_varint() {
     std::cout << "\n[CW-U-11] Large sourceLength (multi-byte varint)\n";
     const std::string path = tp("cw_large_srclen.cmp2");
-    // Build a compressed block with sourceLength = 300 (two varint bytes: 0xAC 0x02)
     ContainerBlock b;
     b.type         = BlockType::Compressed;
     b.isLast       = true;
@@ -331,6 +330,21 @@ static void test_large_source_length_varint() {
     const auto file = cmp2::read_container(path);
     REQUIRE(file.blocks[0].sourceLength == 300,
             "CW-U-11: large sourceLength survives write->read round-trip");
+}
+
+// CW-U-12: Null pointer with size > 0 on writeBlock overload -> InvalidArgument.
+static void test_null_pointer_overload() {
+    std::cout << "\n[CW-U-12] Null pointer with size > 0 -> InvalidArgument\n";
+    const std::string path = tp("cw_null_ptr.cmp2");
+    expect_error(ErrorCode::InvalidArgument, "CW-U-12", [&] {
+        cmp2::ContainerWriter w = cmp2::ContainerWriter::open(path, 15);
+        w.writeBlock(BlockType::Stored, true,
+                     /*sourceLength=*/10,
+                     /*payloadBits=*/80,
+                     /*data=*/nullptr,
+                     /*size=*/10,
+                     /*crc32=*/0);
+    });
 }
 
 // ===========================================================================
@@ -358,15 +372,11 @@ static void test_bad_log2window_in_file() {
 }
 
 // CR-U-03: BlockType bits = 2 (invalid) in flags byte -> InvalidBlockType.
-// Flags layout: bit0=isLast, bits[2:1]=BlockType, bits[7:3]=reserved(0).
-// BlockType=2 -> flags = (2<<1) = 0x04.  Reserved bits stay 0.
 static void test_invalid_block_type_in_file() {
     std::cout << "\n[CR-U-03] BlockType = 2 in flags byte\n";
     const std::string src  = make_valid_archive("cr_src_for_type.cmp2");
     const std::string path = tp("cr_bad_block_type.cmp2");
     auto bytes = read_bytes(src);
-    // Byte 6 is the first block's flags byte.
-    // Clear bits[2:1] then set them to 10 (=2).
     bytes[6] = static_cast<std::uint8_t>((bytes[6] & 0xF9U) | 0x04U);
     write_bytes(path, bytes);
     expect_error(ErrorCode::InvalidBlockType, "CR-U-03",
@@ -374,7 +384,6 @@ static void test_invalid_block_type_in_file() {
 }
 
 // CR-U-04: Reserved flag bits set -> InvalidFlags.
-// Bits [7:3] in the flags byte must be zero.
 static void test_reserved_flag_bits() {
     std::cout << "\n[CR-U-04] Reserved flag bits set\n";
     const std::string src  = make_valid_archive("cr_src_for_reserved.cmp2");
@@ -398,10 +407,8 @@ static void test_read_after_final_block() {
 }
 
 // CR-U-06: finish() with no final block read -> MissingFinalBlock.
-// Build a file whose isLast flag is cleared (by patching), then call finish().
 static void test_finish_without_final_block() {
     std::cout << "\n[CR-U-06] finish() with no final block\n";
-    // We cannot create this via ContainerWriter (it validates), so patch it.
     const std::string src  = make_valid_archive("cr_src_for_no_last.cmp2");
     const std::string path = tp("cr_no_last_block.cmp2");
     auto bytes = read_bytes(src);
@@ -414,30 +421,20 @@ static void test_finish_without_final_block() {
 }
 
 // CR-U-07: Stored block with sourceLength != payloadBytes in the file -> InvalidBlock.
-// Patch the sourceLength varint (byte 7 for a 1-byte varint) to a wrong value.
 static void test_stored_source_length_mismatch() {
     std::cout << "\n[CR-U-07] Stored block: sourceLength != payloadBytes\n";
     const std::string src  = make_valid_archive("cr_src_for_srclen.cmp2");
     const std::string path = tp("cr_srclen_mismatch.cmp2");
     auto bytes = read_bytes(src);
-    // Byte 7 is sourceLength varint (single byte = 4 for a 4-byte payload).
-    // Set it to 5 (!=  payload size 4) to trigger the invariant check.
-    bytes[7] = 0x05;
+    bytes[7] = 0x05; // mismatch
     write_bytes(path, bytes);
     expect_error(ErrorCode::InvalidBlock, "CR-U-07",
                  [&] { cmp2::read_container(path); });
 }
 
 // CR-U-08: Non-canonical varint (0x80 0x00 encoding of 0) -> CorruptHeader.
-// Inject this sequence as the sourceLength of a block.
-// File layout: 6-byte header | flags(1) | sourceLength varint | ...
-// We replace byte 7 onwards with 0x80 0x00 (non-canonical 0) + rest.
 static void test_non_canonical_varint() {
     std::cout << "\n[CR-U-08] Non-canonical varint (0x80 0x00)\n";
-    // Build a minimal header + a block with the varint replaced.
-    // Minimal valid header: 'C','M','P','2', 0x01, 0x0F
-    // Then: flags=0x01 (Stored, isLast), sourceLength=0x80 0x00 (non-canonical 0)
-    // We don't need a full payload because the reader will throw before it reads it.
     std::vector<std::uint8_t> raw = {
         'C','M','P','2', 0x01, 0x0F,   // header
         0x01,                           // flags: Stored, isLast
@@ -453,15 +450,11 @@ static void test_non_canonical_varint() {
 }
 
 // CR-U-09: Unterminated varint (10 continuation bytes) -> CorruptHeader.
-// The reader loop runs for indices 0..9; if none has bit-7 clear it falls
-// through to fail("unterminated varint"). Use 0x81 for all 10 bytes (data=1,
-// avoids the overflow check at index 9 which requires data <= 1).
 static void test_unterminated_varint() {
     std::cout << "\n[CR-U-09] Unterminated varint (10 continuation bytes)\n";
     std::vector<std::uint8_t> raw = {
         'C','M','P','2', 0x01, 0x0F,  // header
         0x01,                          // flags
-        // 10 bytes, all with bit-7 set -> unterminated
         0x81,0x81,0x81,0x81,0x81,
         0x81,0x81,0x81,0x81,0x81
     };
@@ -505,8 +498,66 @@ static void test_has_next_block_after_last() {
     const auto block = r.readNextBlock();
     REQUIRE(block.isLast,    "CR-U-12b: block is marked as last");
     REQUIRE(!r.hasNextBlock(),"CR-U-12c: hasNextBlock() false after final block");
-    r.finish();  // must not throw
+    r.finish();
     record_pass("CR-U-12d: finish() after last block does not throw");
+}
+
+// CR-U-13: Varint 64-bit overflow (data > 1 at index 9) -> CorruptHeader.
+static void test_varint_overflow() {
+    std::cout << "\n[CR-U-13] Varint 64-bit overflow -> CorruptHeader\n";
+    // 9 bytes with bit 7 set and data 0, then 10th byte with data = 2 (> 1)
+    std::vector<std::uint8_t> raw = {
+        'C','M','P','2', 0x01, 0x0F,  // header
+        0x01,                          // flags
+        0x80,0x80,0x80,0x80,0x80,      // bytes 0..4
+        0x80,0x80,0x80,0x80,           // bytes 5..8
+        0x02                           // byte 9: data=2 > 1 -> uint64 overflow
+    };
+    const std::string path = tp("cr_varint_overflow.cmp2");
+    write_bytes(path, raw);
+    expect_error(ErrorCode::CorruptHeader, "CR-U-13",
+                 [&] { cmp2::read_container(path); });
+}
+
+// CR-U-14: Trailing data after final block -> TrailingData.
+static void test_trailing_data_detection() {
+    std::cout << "\n[CR-U-14] Trailing data after final block -> TrailingData\n";
+    const std::string src  = make_valid_archive("cr_src_trailing.cmp2");
+    const std::string path = tp("cr_trailing_data.cmp2");
+    auto bytes = read_bytes(src);
+    bytes.push_back(0xDE); // append extra trailing garbage
+    bytes.push_back(0xAD);
+    write_bytes(path, bytes);
+    expect_error(ErrorCode::TrailingData, "CR-U-14",
+                 [&] { cmp2::read_container(path); });
+}
+
+// CR-U-15: Truncated payload -> TruncatedInput.
+static void test_truncated_payload() {
+    std::cout << "\n[CR-U-15] Truncated payload -> TruncatedInput\n";
+    const std::string src  = make_valid_archive("cr_src_trunc.cmp2");
+    const std::string path = tp("cr_truncated.cmp2");
+    auto bytes = read_bytes(src);
+    assert(bytes.size() > 8);
+    bytes.resize(bytes.size() - 3); // cut short inside payload/CRC
+    write_bytes(path, bytes);
+    expect_error(ErrorCode::TruncatedInput, "CR-U-15",
+                 [&] { cmp2::read_container(path); });
+}
+
+// CR-U-16: readNextBlock(reusablePayload) overload loads data into caller's buffer.
+static void test_reusable_payload_buffer() {
+    std::cout << "\n[CR-U-16] Reusable payload buffer overload\n";
+    const std::string path = make_valid_archive("cr_reusable_payload.cmp2");
+    cmp2::ContainerReader r = cmp2::ContainerReader::open(path);
+    std::vector<std::uint8_t> buffer;
+    const auto block = r.readNextBlock(buffer);
+    REQUIRE(buffer.size() == 4,    "CR-U-16a: caller buffer received 4 bytes");
+    REQUIRE(block.payload.empty(), "CR-U-16b: block.payload remains empty (zero-copy)");
+    REQUIRE(buffer[0] == 0xDE && buffer[1] == 0xAD &&
+            buffer[2] == 0xBE && buffer[3] == 0xEF,
+            "CR-U-16c: caller buffer payload bytes match");
+    r.finish();
 }
 
 } // namespace
@@ -534,6 +585,7 @@ int main() {
     test_three_block_file();
     test_crc_stored_verbatim();
     test_large_source_length_varint();
+    test_null_pointer_overload();
 
     // ContainerReader tests
     test_open_nonexistent_file();
@@ -548,6 +600,10 @@ int main() {
     test_crc_zero_roundtrip();
     test_crc_max_roundtrip();
     test_has_next_block_after_last();
+    test_varint_overflow();
+    test_trailing_data_detection();
+    test_truncated_payload();
+    test_reusable_payload_buffer();
 
     std::filesystem::remove_all(kTmpDir);
 
