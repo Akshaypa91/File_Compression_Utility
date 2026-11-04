@@ -1,0 +1,27 @@
+== BitReader / BitWriter test evidence
+Build command:
+g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I W1/include W1/tests/test_bit_io_standalone.cpp W1/src/bit_io.cpp -o test_bit_io
+
+Execution:
+./test_bit_io
+
+case  input / operation                                      expected                 ACTUAL                   result
+BW1   write 101 (3 bits), then 11 (2 bits)                   10111000                 10111000                 PASS
+BW2   write 13-bit pattern 1011011010101                     B6 A8, bitCount=13       B6 A8, bitCount=13       PASS
+BW3   write 0xDEADBEEF (32 bits)                             DE AD BE EF              DE AD BE EF              PASS
+BW4   write low 4 bits of 0xFFFFFFFF, then 0000               F0                       F0                       PASS
+BW5   write zero bits                                        no output, buffer intact no output, buffer intact PASS
+BR1   read 8 bits from B6 A8                                 0xB6                     0xB6                     PASS
+BR2   read next 5 bits                                       10101                    10101                    PASS
+BR3   stop at exact payloadBits=13                           no extra bit readable    read rejected            PASS
+BR4   request 14 bits when only 13 remain                    fail, consume nothing    fail, 13 bits remain     PASS
+BR5   payloadBits=17 with 2-byte buffer                      invalid reader            invalid reader           PASS
+BW6   writer buffer overflow                                 overflow detected         overflow detected        PASS
+RT1   500 randomized write/read round trips                  all values match          all values match         PASS
+BR6   read 4097-byte payload across refill boundaries        exact bitstream match     exact bitstream match    PASS
+
+== Summary
+Build: PASS (g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror)
+Test execution: BitReader/BitWriter: PASS (128818 checks)
+Exit code: 0
+All test groups passed. No W2/W3/other worklet source or result files were modified.
