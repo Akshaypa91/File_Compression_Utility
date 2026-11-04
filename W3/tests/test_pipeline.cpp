@@ -1,5 +1,6 @@
 #include "pipeline_controller.hpp"
 #include "command_line_interface.hpp"
+#include "production_adapters.hpp"
 
 #include "crc32.h"
 
@@ -243,6 +244,24 @@ void testCliHelpAndArgumentValidation() {
     assert(errors.str().find("power-of-two") != string::npos);
 }
 
+void testProductionWorkletRoundTrip() {
+    const string inputPath = "/tmp/w3_production_input.bin";
+    const string archivePath = "/tmp/w3_production_output.cmp2";
+    const string outputPath = "/tmp/w3_production_restored.bin";
+    LZ77BlockProducer producer;
+    OutputHistorySink sink;
+    PipelineController pipeline(producer, sink);
+
+    vector<uint8_t> source(70000);
+    for (size_t index = 0; index < source.size(); ++index) {
+        source[index] = static_cast<uint8_t>("abracadabra"[index % 11]);
+    }
+    roundTrip(pipeline, source, inputPath, archivePath, outputPath);
+    remove(inputPath.c_str());
+    remove(archivePath.c_str());
+    remove(outputPath.c_str());
+}
+
 } // namespace
 
 int main() {
@@ -250,4 +269,5 @@ int main() {
     testCorruptPayloadRejectedBeforeDecode();
     testTruncatedContainerRejected();
     testCliHelpAndArgumentValidation();
+    testProductionWorkletRoundTrip();
 }
