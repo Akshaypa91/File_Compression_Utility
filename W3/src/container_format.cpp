@@ -167,42 +167,48 @@ std::uint64_t read_varint(std::ifstream& input,
     fail(ErrorCode::CorruptHeader, field + " is an unterminated varint");
 }
 
-std::uint8_t make_flags(const ContainerBlock& block) {
-    const auto type = static_cast<std::uint8_t>(block.type);
-    return static_cast<std::uint8_t>((block.isLast ? kLastFlag : 0U) |
-                                     ((type & 0x03U) << 1U));
+std::uint8_t make_flags(BlockType type, bool isLast) {
+    const auto typeValue = static_cast<std::uint8_t>(type);
+    return static_cast<std::uint8_t>((isLast ? kLastFlag : 0U) |
+                                     ((typeValue & 0x03U) << 1U));
 }
 
-void validate_block_for_write(const ContainerBlock& block) {
-    if (block.sourceLength > kMaxSourceBytesPerBlock) {
+void validate_block_for_write(BlockType type,
+                              std::uint64_t sourceLength,
+                              std::uint64_t payloadBits,
+                              const std::uint8_t* data,
+                              std::size_t size) {
+    if (sourceLength > kMaxSourceBytesPerBlock) {
         fail(ErrorCode::InvalidBlock,
              "sourceLength exceeds the per-block limit");
     }
-    if (block.payload.size() > kMaxPayloadBytesPerBlock) {
+    if (size > kMaxPayloadBytesPerBlock) {
         fail(ErrorCode::InvalidBlock,
              "payload exceeds the per-block limit");
     }
+    if (size != 0 && data == nullptr) {
+        fail(ErrorCode::InvalidArgument, "payload data is null");
+    }
 
-    const auto payloadBytes = static_cast<std::uint64_t>(block.payload.size());
-    if (block.payloadBits > payloadBytes * 8ULL) {
+    const auto payloadBytes = static_cast<std::uint64_t>(size);
+    if (payloadBits > payloadBytes * 8ULL) {
         fail(ErrorCode::InvalidBitLength,
              "payloadBits is greater than payloadBytes * 8");
     }
 
-    switch (block.type) {
+    switch (type) {
     case BlockType::Stored:
-        if (block.sourceLength != payloadBytes) {
+        if (sourceLength != payloadBytes) {
             fail(ErrorCode::InvalidBlock,
                  "stored sourceLength must equal payloadBytes");
         }
-        if (block.payloadBits != payloadBytes * 8ULL) {
+        if (payloadBits != payloadBytes * 8ULL) {
             fail(ErrorCode::InvalidBitLength,
                  "stored payloadBits must equal payloadBytes * 8");
         }
         break;
     case BlockType::Compressed:
-        if (block.sourceLength == 0 || block.payload.empty() ||
-            block.payloadBits == 0) {
+        if (sourceLength == 0 || size == 0 || payloadBits == 0) {
             fail(ErrorCode::InvalidBlock,
                  "compressed blocks must contain source and payload data");
         }
@@ -214,7 +220,8 @@ void validate_block_for_write(const ContainerBlock& block) {
 
 ContainerBlock parse_block(std::ifstream& input,
                            std::uint64_t fileSize,
-                           bool previousBlockWasLast) {
+                           bool previousBlockWasLast,
+                           std::vector<std::uint8_t>& reusablePayload) {
     if (previousBlockWasLast) {
         fail(ErrorCode::InvalidBlockOrder,
              "cannot read a block after the final block");
@@ -257,8 +264,8 @@ ContainerBlock parse_block(std::ifstream& input,
     ensure_can_read(input, fileSize, payloadBytes + 4ULL,
                     "payload and block CRC32");
 
-    block.payload.resize(static_cast<std::size_t>(payloadBytes));
-    read_exact(input, fileSize, block.payload.data(), block.payload.size(),
+    reusablePayload.resize(static_cast<std::size_t>(payloadBytes));
+    read_exact(input, fileSize, reusablePayload.data(), reusablePayload.size(),
                "block payload");
     block.crc32 = read_uint32_le(input, fileSize, "block CRC32");
 
@@ -381,6 +388,17 @@ ContainerWriter::~ContainerWriter() noexcept {
 }
 
 void ContainerWriter::writeBlock(const ContainerBlock& block) {
+    writeBlock(block.type, block.isLast, block.sourceLength, block.payloadBits,
+               block.payload.data(), block.payload.size(), block.crc32);
+}
+
+void ContainerWriter::writeBlock(BlockType type,
+                                 bool isLast,
+                                 std::uint64_t sourceLength,
+                                 std::uint64_t payloadBits,
+                                 const std::uint8_t* data,
+                                 std::size_t size,
+                                 std::uint32_t crc32) {
     if (finished_) {
         fail(ErrorCode::InvalidBlockOrder,
              "cannot write a block after finish()");
@@ -389,18 +407,17 @@ void ContainerWriter::writeBlock(const ContainerBlock& block) {
         fail(ErrorCode::InvalidBlockOrder,
              "cannot write a block after the final block");
     }
-    validate_block_for_write(block);
+    validate_block_for_write(type, sourceLength, payloadBits, data, size);
 
-    const auto flags = make_flags(block);
+    const auto flags = make_flags(type, isLast);
     write_byte(output_, flags, "block flags");
-    write_varint(output_, block.sourceLength);
-    write_varint(output_, static_cast<std::uint64_t>(block.payload.size()));
-    write_varint(output_, block.payloadBits);
-    write_exact(output_, block.payload.data(), block.payload.size(),
-                "block payload");
-    write_uint32_le(output_, block.crc32, "block CRC32");
+    write_varint(output_, sourceLength);
+    write_varint(output_, static_cast<std::uint64_t>(size));
+    write_varint(output_, payloadBits);
+    write_exact(output_, data, size, "block payload");
+    write_uint32_le(output_, crc32, "block CRC32");
 
-    if (block.isLast) {
+    if (isLast) {
         lastBlockWritten_ = true;
     }
 }
@@ -510,6 +527,14 @@ bool ContainerReader::hasNextBlock() const {
 }
 
 ContainerBlock ContainerReader::readNextBlock() {
+    std::vector<std::uint8_t> reusablePayload;
+    ContainerBlock block = readNextBlock(reusablePayload);
+    block.payload = std::move(reusablePayload);
+    return block;
+}
+
+ContainerBlock ContainerReader::readNextBlock(
+    std::vector<std::uint8_t>& reusablePayload) {
     if (finished_ || lastBlockSeen_) {
         fail(ErrorCode::InvalidBlockOrder,
              "cannot read a block after the final block");
@@ -519,7 +544,8 @@ ContainerBlock ContainerReader::readNextBlock() {
              "input ended before a final block was found");
     }
 
-    ContainerBlock block = parse_block(input_, fileSize_, lastBlockSeen_);
+    ContainerBlock block = parse_block(input_, fileSize_, lastBlockSeen_,
+                                       reusablePayload);
     if (block.isLast) {
         lastBlockSeen_ = true;
         if (current_position(input_) != fileSize_) {
