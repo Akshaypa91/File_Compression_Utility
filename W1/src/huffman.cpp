@@ -3,6 +3,8 @@
 #include <cmath>
 #include <cstring>
 
+using namespace std;
+
 namespace w1 {
 
 const char* statusName(Status s) noexcept {
@@ -26,8 +28,8 @@ const char* statusName(Status s) noexcept {
 Plan plan(const cmp::TokenBlock& block) {
     Plan p;
 
-    std::uint32_t lf[cmp::kNumLitLen];
-    std::memcpy(lf, block.litlenFreq, sizeof lf);
+    uint32_t lf[cmp::kNumLitLen];
+    memcpy(lf, block.litlenFreq, sizeof lf);
     if (lf[cmp::kEob] == 0) lf[cmp::kEob] = 1;      // EOB is always coded exactly once
 
     buildLengths(lf, cmp::kNumLitLen, cmp::kMaxCodeLen, p.litLen);
@@ -35,14 +37,14 @@ Plan plan(const cmp::TokenBlock& block) {
     assignCanonical(p.litLen, cmp::kNumLitLen, p.litCode);
     assignCanonical(p.distLen, cmp::kNumDist, p.distCode);
 
-    std::uint64_t bits = 0;
-    std::uint64_t symbols = 0;
+    uint64_t bits = 0;
+    uint64_t symbols = 0;
     for (unsigned i = 0; i < cmp::kNumLitLen; ++i) {
-        bits += static_cast<std::uint64_t>(lf[i]) * p.litLen[i];
+        bits += static_cast<uint64_t>(lf[i]) * p.litLen[i];
         symbols += lf[i];
     }
     for (unsigned i = 0; i < cmp::kNumDist; ++i) {
-        bits += static_cast<std::uint64_t>(block.distFreq[i]) * p.distLen[i];
+        bits += static_cast<uint64_t>(block.distFreq[i]) * p.distLen[i];
         symbols += block.distFreq[i];
     }
     p.huffmanBits = bits;
@@ -58,13 +60,13 @@ Plan plan(const cmp::TokenBlock& block) {
 // ---------------------------------------------------------------------------
 Status emit(const cmp::TokenBlock& block, const Plan& p, BitWriter& out) {
     if (p.status != Status::Ok || block.n > cmp::kBlockTokens) return Status::InvalidToken;
-    const std::uint64_t startBits = out.bitCount();
+    const uint64_t startBits = out.bitCount();
 
     for (unsigned i = 0; i < cmp::kNumLitLen; ++i) out.write(p.litLen[i], 4);
     for (unsigned i = 0; i < cmp::kNumDist; ++i) out.write(p.distLen[i], 4);
 
     const cmp::SymbolTables& tab = cmp::kTables;
-    for (std::uint32_t i = 0; i < block.n; ++i) {
+    for (uint32_t i = 0; i < block.n; ++i) {
         const cmp::Tok t = block.tok[i];
         if (!cmp::isMatch(t)) {
             const unsigned b = cmp::litOf(t);
@@ -72,8 +74,8 @@ Status emit(const cmp::TokenBlock& block, const Plan& p, BitWriter& out) {
             if (len == 0) return Status::MissingCode;
             out.write(p.litCode[b], len);
         } else {
-            const std::uint32_t length = cmp::lenOf(t);
-            const std::uint32_t distance = cmp::distOf(t);
+            const uint32_t length = cmp::lenOf(t);
+            const uint32_t distance = cmp::distOf(t);
             if (distance > cmp::kMaxDistance) return Status::InvalidToken;
 
             const unsigned ls = cmp::lenSymbol(length);
@@ -98,8 +100,8 @@ Status emit(const cmp::TokenBlock& block, const Plan& p, BitWriter& out) {
 // ---------------------------------------------------------------------------
 // decoder tables
 // ---------------------------------------------------------------------------
-Status buildDecodeTable(const std::uint8_t* lens, unsigned n, DecodeTable& t) {
-    std::memset(&t, 0, sizeof t);
+Status buildDecodeTable(const uint8_t* lens, unsigned n, DecodeTable& t) {
+    memset(&t, 0, sizeof t);
 
     unsigned maxLen = 0;
     for (unsigned i = 0; i < n; ++i) {
@@ -110,33 +112,33 @@ Status buildDecodeTable(const std::uint8_t* lens, unsigned n, DecodeTable& t) {
         }
     }
     if (maxLen == 0) return Status::Ok;                       // empty table (no codes)
-    if (kraftSum(lens, n) > (std::uint64_t{1} << cmp::kMaxCodeLen)) {
+    if (kraftSum(lens, n) > (uint64_t{1} << cmp::kMaxCodeLen)) {
         return Status::InvalidCodeTable;                      // over-subscribed: not a prefix code
     }
-    t.maxLen = static_cast<std::uint8_t>(maxLen);
+    t.maxLen = static_cast<uint8_t>(maxLen);
 
-    std::uint32_t code = 0;
+    uint32_t code = 0;
     unsigned index = 0;
     for (unsigned len = 1; len <= cmp::kMaxCodeLen; ++len) {
         code = (code + t.count[len - 1]) << 1;
-        t.first[len] = static_cast<std::uint16_t>(code);
-        t.offset[len] = static_cast<std::uint16_t>(index);
+        t.first[len] = static_cast<uint16_t>(code);
+        t.offset[len] = static_cast<uint16_t>(index);
         index += t.count[len];
     }
 
     unsigned fill[cmp::kMaxCodeLen + 1];
     for (unsigned len = 0; len <= cmp::kMaxCodeLen; ++len) fill[len] = t.offset[len];
-    std::uint16_t codes[cmp::kNumLitLen];
+    uint16_t codes[cmp::kNumLitLen];
     assignCanonical(lens, n, codes);
     for (unsigned s = 0; s < n; ++s) {
         const unsigned len = lens[s];
         if (len == 0) continue;
-        t.sorted[fill[len]++] = static_cast<std::uint16_t>(s);
+        t.sorted[fill[len]++] = static_cast<uint16_t>(s);
         if (len <= kFastBits) {
             const unsigned base = static_cast<unsigned>(codes[s]) << (kFastBits - len);
             const unsigned span = 1u << (kFastBits - len);
             for (unsigned k = 0; k < span; ++k) {
-                t.fast[base + k] = static_cast<std::uint16_t>((len << 9) | s);
+                t.fast[base + k] = static_cast<uint16_t>((len << 9) | s);
             }
         }
     }
@@ -146,16 +148,16 @@ Status buildDecodeTable(const std::uint8_t* lens, unsigned n, DecodeTable& t) {
 Status readTables(BitReader& in, HuffTables& tables) {
     if (!in.valid() || in.bitsLeft() < kHeaderBits) return Status::InvalidBitLength;
 
-    std::uint8_t litLen[cmp::kNumLitLen];
-    std::uint8_t distLen[cmp::kNumDist];
-    std::uint32_t v = 0;
+    uint8_t litLen[cmp::kNumLitLen];
+    uint8_t distLen[cmp::kNumDist];
+    uint32_t v = 0;
     for (unsigned i = 0; i < cmp::kNumLitLen; ++i) {
         if (!in.readBits(4, v)) return Status::InvalidBitLength;
-        litLen[i] = static_cast<std::uint8_t>(v);
+        litLen[i] = static_cast<uint8_t>(v);
     }
     for (unsigned i = 0; i < cmp::kNumDist; ++i) {
         if (!in.readBits(4, v)) return Status::InvalidBitLength;
-        distLen[i] = static_cast<std::uint8_t>(v);
+        distLen[i] = static_cast<uint8_t>(v);
     }
     if (litLen[cmp::kEob] == 0) return Status::InvalidCodeTable;   // a block must be able to end
 
@@ -175,17 +177,17 @@ bool verifyPrefixFree(const Plan& p) {
 EntropyReport entropyReport(const cmp::TokenBlock& block, const Plan& p) {
     EntropyReport r;
 
-    std::uint32_t lf[cmp::kNumLitLen];
-    std::memcpy(lf, block.litlenFreq, sizeof lf);
+    uint32_t lf[cmp::kNumLitLen];
+    memcpy(lf, block.litlenFreq, sizeof lf);
     if (lf[cmp::kEob] == 0) lf[cmp::kEob] = 1;       // same EOB rule as plan()
 
     // Entropy of each alphabet's own distribution, summed:  H = sum f * log2(total / f).
-    auto accumulate = [&r](const std::uint32_t* f, unsigned n) {
+    auto accumulate = [&r](const uint32_t* f, unsigned n) {
         double total = 0;
         for (unsigned i = 0; i < n; ++i) total += f[i];
         if (total <= 0) return;
         for (unsigned i = 0; i < n; ++i) {
-            if (f[i] > 0) r.entropyBits += f[i] * std::log2(total / f[i]);
+            if (f[i] > 0) r.entropyBits += f[i] * log2(total / f[i]);
         }
     };
     accumulate(lf, cmp::kNumLitLen);

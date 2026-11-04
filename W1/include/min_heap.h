@@ -8,11 +8,13 @@
 #include <cstddef>
 #include <cstdint>
 
+using namespace std;
+
 namespace w1 {
 
 struct HeapItem {
-    std::uint64_t weight;
-    std::uint32_t id;
+    uint64_t weight;
+    uint32_t id;
 };
 
 // strict ordering: smaller weight first, then smaller id
@@ -24,10 +26,10 @@ class MinHeap {
 public:
     // Large enough for the biggest alphabet (286 leaves); the heap never holds more leaves
     // than that because each merge removes two items and adds one.
-    static constexpr std::size_t kCapacity = 320;
+    static constexpr size_t kCapacity = 320;
 
     bool empty() const noexcept { return size_ == 0; }
-    std::size_t size() const noexcept { return size_; }
+    size_t size() const noexcept { return size_; }
     const HeapItem& top() const noexcept { return items_[0]; }
 
     bool push(const HeapItem& item) noexcept;   // false if the heap is full
@@ -35,7 +37,7 @@ public:
 
 private:
     HeapItem items_[kCapacity];
-    std::size_t size_ = 0;
+    size_t size_ = 0;
 };
 
 }  // namespace w1
