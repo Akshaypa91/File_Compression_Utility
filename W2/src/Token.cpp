@@ -1,12 +1,14 @@
 #include "../include/Token.h"
 
+using namespace std;
+
 namespace cmp {
 
 // Initialize the shared token block.
 bool initTokenBlock(
     TokenBlock& block,
-    const std::uint8_t* src,
-    std::uint32_t srcLen
+    const uint8_t* src,
+    uint32_t srcLen
 )
 {
     if (srcLen > 0 && src == nullptr)
@@ -26,7 +28,7 @@ bool initTokenBlock(
 // Emit one literal byte and update its frequency.
 bool emitLiteral(
     TokenBlock& block,
-    std::uint8_t byte
+    uint8_t byte
 )
 {
     if (block.full())
@@ -43,8 +45,8 @@ bool emitLiteral(
 // Emit one LZ77 match and update its frequencies.
 bool emitMatch(
     TokenBlock& block,
-    std::uint32_t length,
-    std::uint32_t distance
+    uint32_t length,
+    uint32_t distance
 )
 {
     if (block.full())

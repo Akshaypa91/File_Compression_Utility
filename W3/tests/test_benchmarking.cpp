@@ -10,12 +10,14 @@
 #include <thread>
 #include <vector>
 
+using namespace std;
+
 namespace {
 
-const std::filesystem::path kTestDir =
-    std::filesystem::temp_directory_path() / "cmp2_benchmarking_tests";
+const filesystem::path kTestDir =
+    filesystem::temp_directory_path() / "cmp2_benchmarking_tests";
 
-std::filesystem::path test_path(const std::string& name) {
+filesystem::path test_path(const string& name) {
     return kTestDir / name;
 }
 
@@ -31,28 +33,28 @@ void test_varint_and_framing() {
     block.type = cmp2::BlockType::Stored;
     block.isLast = false;
     block.sourceLength = 100;
-    block.payload = std::vector<std::uint8_t>(100, 'A');
+    block.payload = vector<uint8_t>(100, 'A');
     block.payloadBits = 800; // 100 * 8
     block.crc32 = 0x12345678U;
 
     // Framing: 1 flag + varint(100)=1 + varint(100)=1 + varint(800)=2 + 4 CRC = 9 bytes
-    const std::size_t framing = cmp2::calculate_framing_overhead(block);
+    const size_t framing = cmp2::calculate_framing_overhead(block);
     assert(framing == 9);
 
-    const std::size_t total = cmp2::calculate_total_block_size(block);
+    const size_t total = cmp2::calculate_total_block_size(block);
     assert(total == 109);
 }
 
 void test_ratio_and_reduction_calculations() {
     // 1000 original -> 500 final: ratio 2.0x, reduction 50.0%
     const double ratio1 = cmp2::calculate_compression_ratio(1000, 500);
-    assert(std::fabs(ratio1 - 2.0) < 1e-6);
+    assert(fabs(ratio1 - 2.0) < 1e-6);
 
     const double red1 = cmp2::calculate_percentage_reduction(1000, 500);
-    assert(std::fabs(red1 - 50.0) < 1e-6);
+    assert(fabs(red1 - 50.0) < 1e-6);
 
     const double inv1 = cmp2::calculate_space_ratio(1000, 500);
-    assert(std::fabs(inv1 - 0.5) < 1e-6);
+    assert(fabs(inv1 - 0.5) < 1e-6);
 
     // Expansion: 10 original -> 18 final: ratio < 1.0, negative reduction
     const double ratio2 = cmp2::calculate_compression_ratio(10, 18);
@@ -70,11 +72,11 @@ void test_timer_and_session() {
     cmp2::BlockBenchmarkTimer timer;
 
     timer.startCompression();
-    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    this_thread::sleep_for(chrono::milliseconds(2));
     timer.stopCompression();
 
     timer.startDecompression();
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    this_thread::sleep_for(chrono::milliseconds(1));
     timer.stopDecompression();
 
     assert(timer.compressionElapsedNs() > 0);
@@ -84,7 +86,7 @@ void test_timer_and_session() {
     block.type = cmp2::BlockType::Compressed;
     block.isLast = true;
     block.sourceLength = 1000;
-    block.payload = std::vector<std::uint8_t>(400, 0x55);
+    block.payload = vector<uint8_t>(400, 0x55);
     block.payloadBits = 3200;
     block.crc32 = 0xAABBCCDD;
 
@@ -147,36 +149,36 @@ void test_benchmark_container_file_round_trip() {
     assert(b.totalPayloadBytes == 7);   // 4 + 3
 
     // Check exact disk file size against calculated final size
-    const auto actualDiskSize = std::filesystem::file_size(path);
+    const auto actualDiskSize = filesystem::file_size(path);
     assert(b.finalTotalSize == actualDiskSize);
 
     // Test text, CSV, and JSON formatters
-    const std::string textRep = cmp2::format_benchmark_report(b);
-    assert(textRep.find("WORKLET 3 BENCHMARK REPORT") != std::string::npos);
-    assert(textRep.find("Stored") != std::string::npos);
-    assert(textRep.find("Compressed") != std::string::npos);
+    const string textRep = cmp2::format_benchmark_report(b);
+    assert(textRep.find("WORKLET 3 BENCHMARK REPORT") != string::npos);
+    assert(textRep.find("Stored") != string::npos);
+    assert(textRep.find("Compressed") != string::npos);
 
-    const std::string csvRep = cmp2::format_benchmark_csv(b);
-    assert(csvRep.find("block_index,type,is_last") != std::string::npos);
-    assert(csvRep.find("summary_total_blocks") != std::string::npos);
+    const string csvRep = cmp2::format_benchmark_csv(b);
+    assert(csvRep.find("block_index,type,is_last") != string::npos);
+    assert(csvRep.find("summary_total_blocks") != string::npos);
 
-    const std::string jsonRep = cmp2::format_benchmark_json(b);
-    assert(jsonRep.find("\"originalTotalSize\": 54") != std::string::npos);
-    assert(jsonRep.find("\"totalBlocks\": 2") != std::string::npos);
+    const string jsonRep = cmp2::format_benchmark_json(b);
+    assert(jsonRep.find("\"originalTotalSize\": 54") != string::npos);
+    assert(jsonRep.find("\"totalBlocks\": 2") != string::npos);
 }
 
 } // namespace
 
 int main() {
-    std::filesystem::remove_all(kTestDir);
-    std::filesystem::create_directories(kTestDir);
+    filesystem::remove_all(kTestDir);
+    filesystem::create_directories(kTestDir);
 
     test_varint_and_framing();
     test_ratio_and_reduction_calculations();
     test_timer_and_session();
     test_benchmark_container_file_round_trip();
 
-    std::filesystem::remove_all(kTestDir);
-    std::cout << "All Worklet 3 benchmarking unit tests passed!\n";
+    filesystem::remove_all(kTestDir);
+    cout << "All Worklet 3 benchmarking unit tests passed!\n";
     return 0;
 }

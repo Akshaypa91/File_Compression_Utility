@@ -5,6 +5,8 @@
 #include "symbols.hpp"
 #include "HashChain.h"
 
+using namespace std;
+
 // LZ77 configuration
 constexpr int LZ77_HASH_SIZE = 32768;
 constexpr int LZ77_WINDOW_SIZE = 32768;
