@@ -71,3 +71,12 @@ eggs/
 *.tmp
 test_output/
 benchmark_output/
+reports/
+results/
+usertests/
+/compressor
+/run_benchmarks.sh
+
+# Markdown files outside W1 and W3 (root repository level)
+/*.md
+

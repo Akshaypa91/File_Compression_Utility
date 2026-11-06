@@ -63,8 +63,9 @@ namespace cmp
 
 bool compressLZ77(
     TokenBlock& block,
-    const uint8_t* src,
-    uint32_t srcLen
+    const std::uint8_t* src,
+    std::uint32_t srcLen,
+    std::uint32_t windowSize
 )
 {
     if ((srcLen > 0 && src == nullptr) ||

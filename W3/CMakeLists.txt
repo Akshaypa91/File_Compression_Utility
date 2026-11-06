@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 project(worklet3 LANGUAGES CXX)
 
-
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -75,7 +74,20 @@ add_executable(benchmark_cli
 target_link_libraries(benchmark_cli PRIVATE cmp2_container)
 
 # ---------------------------------------------------------------------------
-# Pipeline layer (your code) – requires W1 (Huffman) + shared symbols
+# Extended Unit Tests (dev_varad)
+# ---------------------------------------------------------------------------
+add_executable(test_crc32_extended
+    tests/test_crc32_extended.cpp
+)
+target_link_libraries(test_crc32_extended PRIVATE w3_crc32)
+
+add_executable(test_container_extended
+    tests/test_container_extended.cpp
+)
+target_link_libraries(test_container_extended PRIVATE cmp2_container)
+
+# ---------------------------------------------------------------------------
+# Pipeline layer – requires W1 (Huffman) + shared symbols
 # ---------------------------------------------------------------------------
 set(W1_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../W1"
     CACHE PATH "Path to the W1 source tree")
@@ -144,10 +156,12 @@ endif()
 # CTest registration
 # ---------------------------------------------------------------------------
 enable_testing()
-add_test(NAME cmp2_container_tests    COMMAND test_container_format)
-add_test(NAME cmp2_benchmarking_tests COMMAND test_benchmarking)
-add_test(NAME w3_instructions_tests   COMMAND test_w3_instructions)
-add_test(NAME crc32_tests             COMMAND test_crc32)
+add_test(NAME cmp2_container_tests     COMMAND test_container_format)
+add_test(NAME cmp2_benchmarking_tests  COMMAND test_benchmarking)
+add_test(NAME w3_instructions_tests    COMMAND test_w3_instructions)
+add_test(NAME crc32_tests              COMMAND test_crc32)
+add_test(NAME crc32_extended_tests     COMMAND test_crc32_extended)
+add_test(NAME container_extended_tests COMMAND test_container_extended)
 if(TARGET test_pipeline)
     add_test(NAME pipeline_tests COMMAND test_pipeline)
 endif()

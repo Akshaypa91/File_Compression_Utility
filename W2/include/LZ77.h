@@ -19,8 +19,9 @@ namespace cmp {
 // Store generated tokens and symbol frequencies in TokenBlock.
 bool compressLZ77(
     TokenBlock& block,
-    const uint8_t* src,
-    uint32_t srcLen
+    const std::uint8_t* src,
+    std::uint32_t srcLen,
+    std::uint32_t windowSize = LZ77_WINDOW_SIZE
 );
 
 } // namespace cmp
