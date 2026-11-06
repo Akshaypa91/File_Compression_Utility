@@ -1,0 +1,122 @@
+File 'c:/mingw/lib/gcc/mingw32/6.3.0/include/c++/bits/stl_algobase.h'
+Lines executed:28.81% of 59
+Branches executed:16.67% of 12
+Taken at least once:8.33% of 12
+Calls executed:40.91% of 22
+Creating 'stl_algobase.h.gcov'
+
+File 'c:/mingw/lib/gcc/mingw32/6.3.0/include/c++/bits/cpp_type_traits.h'
+Lines executed:0.00% of 2
+No branches
+No calls
+Creating 'cpp_type_traits.h.gcov'
+
+File 'c:/mingw/lib/gcc/mingw32/6.3.0/include/c++/bits/stl_iterator.h'
+Lines executed:0.00% of 14
+No branches
+Calls executed:0.00% of 4
+Creating 'stl_iterator.h.gcov'
+
+File 'c:/mingw/lib/gcc/mingw32/6.3.0/include/c++/bits/predefined_ops.h'
+Lines executed:100.00% of 21
+No branches
+Calls executed:100.00% of 6
+Creating 'predefined_ops.h.gcov'
+
+File 'c:/mingw/lib/gcc/mingw32/6.3.0/include/c++/bits/stl_heap.h'
+Lines executed:97.92% of 48
+Branches executed:100.00% of 24
+Taken at least once:87.50% of 24
+Calls executed:100.00% of 17
+Creating 'stl_heap.h.gcov'
+
+File 'c:/mingw/lib/gcc/mingw32/6.3.0/include/c++/bits/stl_uninitialized.h'
+Lines executed:0.00% of 17
+No branches
+Calls executed:0.00% of 9
+Creating 'stl_uninitialized.h.gcov'
+
+File 'c:/mingw/lib/gcc/mingw32/6.3.0/include/c++/ext/new_allocator.h'
+Lines executed:0.00% of 13
+Branches executed:0.00% of 4
+Taken at least once:0.00% of 4
+Calls executed:0.00% of 6
+Creating 'new_allocator.h.gcov'
+
+File 'c:/mingw/lib/gcc/mingw32/6.3.0/include/c++/bits/move.h'
+Lines executed:55.56% of 9
+No branches
+Calls executed:50.00% of 6
+Creating 'move.h.gcov'
+
+File 'c:/mingw/lib/gcc/mingw32/6.3.0/include/c++/bits/stl_vector.h'
+Lines executed:0.00% of 69
+Branches executed:0.00% of 14
+Taken at least once:0.00% of 14
+Calls executed:0.00% of 39
+Creating 'stl_vector.h.gcov'
+
+File 'c:/mingw/lib/gcc/mingw32/6.3.0/include/c++/bits/alloc_traits.h'
+Lines executed:0.00% of 10
+No branches
+Calls executed:0.00% of 6
+Creating 'alloc_traits.h.gcov'
+
+File 'c:/mingw/lib/gcc/mingw32/6.3.0/include/c++/bits/stl_construct.h'
+Lines executed:0.00% of 7
+No branches
+Calls executed:0.00% of 2
+Creating 'stl_construct.h.gcov'
+
+File 'c:/mingw/lib/gcc/mingw32/6.3.0/include/c++/bits/allocator.h'
+Lines executed:0.00% of 3
+No branches
+Calls executed:0.00% of 2
+Creating 'allocator.h.gcov'
+
+File 'c:/mingw/lib/gcc/mingw32/6.3.0/include/c++/bits/stl_algo.h'
+Lines executed:97.62% of 84
+Branches executed:95.00% of 40
+Taken at least once:85.00% of 40
+Calls executed:95.45% of 44
+Creating 'stl_algo.h.gcov'
+
+File 'c:/mingw/lib/gcc/mingw32/6.3.0/include/c++/bits/vector.tcc'
+Lines executed:0.00% of 43
+Branches executed:0.00% of 20
+Taken at least once:0.00% of 20
+Calls executed:0.00% of 36
+Creating 'vector.tcc.gcov'
+
+File '../../src/huffman_tree.cpp'
+Lines executed:100.00% of 106
+Branches executed:100.00% of 114
+Taken at least once:85.96% of 114
+Calls executed:84.38% of 32
+Creating 'huffman_tree.cpp.gcov'
+
+File '../../include/min_heap.h'
+Lines executed:0.00% of 2
+No branches
+No calls
+Creating 'min_heap.h.gcov'
+
+File 'c:/mingw/lib/gcc/mingw32/6.3.0/include/c++/cstring'
+Lines executed:0.00% of 10
+No branches
+No calls
+Creating 'cstring.gcov'
+
+File '../../include/bit_io.h'
+Lines executed:72.41% of 29
+Branches executed:88.89% of 18
+Taken at least once:61.11% of 18
+Calls executed:100.00% of 4
+Creating 'bit_io.h.gcov'
+
+File 'c:/mingw/lib/gcc/mingw32/6.3.0/include/c++/new'
+Lines executed:0.00% of 2
+No branches
+No calls
+Creating 'new.gcov'
+

@@ -1,0 +1,46 @@
+Updated by : Aditya (with Antigravity)    Branch: dev_aditya    Date: 2026-10-31
+
+Files changed table:
+File                     | Lines changed | What changed
+W1/src/huffman_tree.cpp  | 6-8, 90       | Inlined macro guard on symbols.hpp; fixed tie-break comparator in length limiting
+
+Bug 1: Inverted tie-break order during length-limiting fixup
+Trigger input:
+  Any frequency table exceeding maxLen where multiple symbols have identical weights
+  and receive different code lengths after the length-limiting fixup loop.
+  Example: n = 6, weights {1, 2, 4, 8, 8, 16}, maxLen = 3.
+What was wrong:
+  Expected: In accordance with R6 ("ties are broken by (weight, id), smaller id first")
+  and golden fact G3, smaller symbol IDs are merged earlier and receive longer or equal code
+  lengths. Symbol 3 (weight 8) must receive length 3, and symbol 4 (weight 8) must receive length 2.
+  Actual: Symbol 3 received length 2, and symbol 4 received length 3.
+Root cause:
+  When distributing lengths from maxLen down to 1, rarest symbols are assigned first.
+  Line 88 used 'a > b' for equal weights, which placed larger IDs first in the assignment
+  order, inverting the tie-break requirement and granting larger IDs the longer codes.
+Exact old line:
+        return weight[a] != weight[b] ? weight[a] < weight[b] : a > b;
+Exact new line:
+        return weight[a] != weight[b] ? weight[a] < weight[b] : a < b;
+Worklet impact:
+  No other worklet is affected; output bytes change only for blocks where highly skewed distributions
+  trigger length limiting and require tie-breaking between equal-weight symbols.
+
+Bug 2: Compiler error under C++17 on MinGW toolchains
+Trigger input:
+  Compiling W1/src/huffman_tree.cpp with g++ -std=c++17 on MinGW GCC 6.3.0.
+What was wrong:
+  Expected: Clean compilation with g++ -std=c++17.
+  Actual: Compiler rejected 'cmp::kTables' declared as an 'inline' variable in symbols.hpp.
+Root cause:
+  MinGW GCC 6.3.0 implements early C++17 draft specifications and does not support inline
+  variables on namespace-scope objects. Wrapping the include temporarily neutralizes the
+  unsupported keyword during header parsing without modifying the shared interface contract.
+Exact old line:
+#include "symbols.hpp"
+Exact new lines:
+#define inline
+#include "symbols.hpp"
+#undef inline
+Worklet impact:
+  No other worklet is affected; output bytes do not change for any inputs.

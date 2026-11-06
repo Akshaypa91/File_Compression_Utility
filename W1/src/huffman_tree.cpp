@@ -3,7 +3,9 @@
 #include <algorithm>
 
 #include "min_heap.h"
+#define inline
 #include "symbols.hpp"
+#undef inline
 
 using namespace std;
 
@@ -87,7 +89,7 @@ void buildLengths(const uint32_t* freq, unsigned n, unsigned maxLen, uint8_t* le
     unsigned order[kMaxSymbols];
     for (unsigned k = 0; k < m; ++k) order[k] = k;
     sort(order, order + m, [&](unsigned a, unsigned b) {
-        return weight[a] != weight[b] ? weight[a] < weight[b] : a > b;
+        return weight[a] != weight[b] ? weight[a] < weight[b] : a < b;
     });
     unsigned idx = 0;
     for (unsigned bits = maxLen; bits >= 1; --bits) {

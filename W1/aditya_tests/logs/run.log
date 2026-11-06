@@ -1,0 +1,135 @@
+Seed: 20261031
+
+ID      Type         Technique            Description                      Result
+
+Section A: Property tests
+PR-01   Property     Random property      10k tables: Kraft sum <= 2^15    PASS
+PR-02   Property     Random property      10k tables: used 1..15, unused 0 PASS
+PR-03   Property     Random property      10k tables: more freq not longer PASS
+PR-04   Property     Random property      10k tables: prefix-free (both)   PASS
+PR-05   Property     Random property      10k tables: deterministic repeat PASS
+PR-06   Property     Random property      10k tables: canonical rule match PASS
+
+Section B: Unit tests
+UT-01   Unit test    Component test       buildLengths basic 4 symbols     PASS
+UT-02   Unit test    Component test       assignCanonical hand-written lens PASS
+UT-03   Unit test    Component test       kraftSum empty table returns 0   PASS
+UT-04   Unit test    Component test       kraftSum complete code == 32768  PASS
+UT-05   Unit test    Component test       kraftSum over-full code > 32768  PASS
+UT-06   Unit test    Component test       kraftSum incomplete valid code   PASS
+UT-07   Unit test    Component test       verifyPrefixFree on valid code   PASS
+UT-08   Unit test    Component test       verifyPrefixFree invalid prefix 0,01 PASS
+UT-09   Unit test    Component test       MinHeap push/pop priority order  PASS
+UT-10   Unit test    Component test       MinHeap size and empty methods   PASS
+UT-11   Unit test    Component test       heapLess strict weak ordering    PASS
+
+Section C: Black box tests
+BB-01   Black box    Equivalence cls      empty table (0 symbols used)     PASS
+BB-02   Black box    Equivalence cls      1 symbol used length is 1        PASS
+BB-03   Black box    Boundary value       2 symbols, weights 1 and 1       PASS
+BB-04   Black box    Equivalence cls      small alphabet (8 symbols)       PASS
+BB-05   Black box    Equivalence cls      medium alphabet (64 symbols)     PASS
+BB-06   Black box    Equivalence cls      286 literal/length symbols       PASS
+BB-07   Black box    Equivalence cls      30 distance symbols              PASS
+BB-08   Black box    Boundary value       0 used symbols gives all zeros   PASS
+BB-09   Black box    Boundary value       1 used symbol in 10-table        PASS
+BB-10   Black box    Boundary value       2 used symbols in 10-table       PASS
+BB-11   Black box    Boundary value       285 used symbols in 286-table    PASS
+BB-12   Black box    Boundary value       286 used symbols (full alphabet) PASS
+BB-13   Black box    Boundary value       weight 0 among used symbols      PASS
+BB-14   Black box    Boundary value       minimum positive weight 1        PASS
+BB-15   Black box    Boundary value       small positive weight 2          PASS
+BB-16   Black box    Boundary value       max uint32 weight 0xFFFFFFFF     PASS
+BB-17   Black box    Boundary value       only first symbol used (sym 0)   PASS
+BB-18   Black box    Boundary value       only last symbol used (sym 285)  PASS
+BB-19   Black box    Boundary value       all weights equal for n = 2      PASS
+BB-20   Black box    Boundary value       all weights equal for n = 3      PASS
+BB-21   Black box    Boundary value       all weights equal for n = 4      PASS
+BB-22   Black box    Boundary value       all weights equal for n = 5      PASS
+BB-23   Black box    Boundary value       all weights equal for n = 8      PASS
+BB-24   Black box    Boundary value       all weights equal for n = 16     PASS
+BB-25   Black box    Boundary value       all weights equal for n = 286    PASS
+BB-26   Black box    Error guessing       zero weights interspersed        PASS
+BB-27   Black box    Error guessing       two huge weights summed overflow PASS
+BB-28   Black box    Error guessing       alternating used/unused symbols  PASS
+BB-29   Black box    Error guessing       weights in ascending order       PASS
+BB-30   Black box    Error guessing       weights in descending order      PASS
+BB-31   Black box    Decision table       depth strictly below 15          PASS
+BB-32   Black box    Decision table       depth reaching exactly 15        PASS
+BB-33   Black box    Decision table       depth above 15 (Fibonacci 40)    PASS
+BB-34   Black box    Golden test          G1 weights 4,2,1,1 -> 1,2,3,3    PASS
+BB-35   Black box    Golden test          G2 symbols 97,98,99,120,256,263  PASS
+BB-36   Black box    Golden test          G3 three equal weights -> 2,2,1  PASS
+BB-37   Black box    Golden test          G4 maxLen 3, weights 5,3,2,1,1   PASS
+BB-38   Black box    Golden test          G5 distance table only symbol 2  PASS
+BB-39   Black box    Golden test          G6 one symbol in 286 table       PASS
+
+Section D: White box tests
+WB-01   White box    Path coverage        empty branch (m == 0)            PASS
+WB-02   White box    Path coverage        single-symbol branch (m == 1)    PASS
+WB-03   White box    Path coverage        min-heap merge loop execution    PASS
+WB-04   White box    Path coverage        downward depth pass calculation  PASS
+WB-05   White box    Path coverage        length limit inner scan          PASS
+WB-06   White box    Path coverage        fixup outer loop repeats >1      PASS
+WB-07   White box    Path coverage        canonical code generation loop   PASS
+WB-08   White box    Path coverage        MinHeap sift-up ordering         PASS
+WB-09   White box    Path coverage        MinHeap sift-down rebalance      PASS
+WB-10   White box    Path coverage        tie-break equal weights (G3)     PASS
+WB-11   White box    Path coverage        tie-break direction smaller id   PASS
+WB-12   White box    Boundary value       push 321 items: 321st fails      PASS
+WB-13   White box    Path coverage        buildTrie valid and prefix reject PASS
+WB-14   White box    Path coverage        trieDecode bit-by-bit walk       PASS
+
+Section E: Integration tests
+IT-01   Integration  Round trip           200 random 1000-symbol sequences PASS
+IT-02   Integration  Round trip           golden G2 table round trip       PASS
+IT-03   Integration  Round trip           286 + 30 paired compression build PASS
+
+Section F: Functional tests (R1 to R12)
+FT-R01  Functional   Requirement          R1: used 1..15, unused 0         PASS
+FT-R02  Functional   Requirement          R2: Kraft sum never exceeds 2^15 PASS
+FT-R03  Functional   Requirement          R3: codes are prefix-free        PASS
+FT-R04  Functional   Requirement          R4: more freq never longer code  PASS
+FT-R05  Functional   Requirement          R5: deterministic output         PASS
+FT-R06  Functional   Requirement          R6: ties broken by (weight, id)  PASS
+FT-R07  Functional   Requirement          R7: single used symbol gets len 1 PASS
+FT-R08  Functional   Requirement          R8: no used symbols gives all zeros PASS
+FT-R09  Functional   Requirement          R9: length limit 15 enforced valid PASS
+FT-R10  Functional   Requirement          R10: canonical codes follow rule PASS
+FT-R11  Functional   Requirement          R11: encode then decode round trip PASS
+FT-R12  Functional   Requirement          R12: heap order and cap 320 full PASS
+
+Requirement  Test IDs                             Result
+R1           BB-01, BB-02, BB-08, FT-R01, PR-02   PASS
+R2           BB-04, BB-05, BB-06, FT-R02, PR-01   PASS
+R3           UT-07, UT-08, FT-R03, PR-04          PASS
+R4           BB-29, BB-30, FT-R04, PR-03          PASS
+R5           FT-R05, PR-05                        PASS
+R6           BB-36, WB-10, WB-11, FT-R06          PASS
+R7           BB-02, BB-09, BB-17, BB-18, FT-R07   PASS
+R8           BB-01, BB-08, FT-R08                 PASS
+R9           BB-31, BB-32, BB-33, FT-R09          PASS
+R10          UT-02, BB-34, BB-35, FT-R10, PR-06   PASS
+R11          IT-01, IT-02, IT-03, FT-R11          PASS
+R12          UT-09, UT-10, UT-11, WB-12, FT-R12   PASS
+
+Section G: Non-functional tests
+NF-01   Non-func     Benchmark            Speed uniform 286 (build+canon)  PASS
+NF-02   Non-func     Benchmark            Speed Fibonacci 286 worst-case   PASS
+
+Speed benchmark (2000 iters/run, 10 runs, built with -O2):
+  Uniform 286:   min  19.29 us,  median  21.81 us,  max  23.79 us
+  Fibonacci 286: min  26.80 us,  median  29.11 us,  max  31.53 us
+NF-03   Non-func     Repeatability        same table 100x identical output PASS
+NF-04   Non-func     Memory audit         sizeof HeapItem, MinHeap, arrays PASS
+
+Memory layout audit:
+  sizeof(HeapItem):      16 bytes
+  sizeof(MinHeap):       5128 bytes (320 items capacity)
+  sizeof(uint8_t[286]):  286 bytes
+  sizeof(uint16_t[286]): 572 bytes
+NF-05   Non-func     Stress test          100k Fibonacci tables obey R1-R3 PASS
+NF-06   Non-func     Robustness           all-zero tables (n=1, n=286)     PASS
+NF-07   Non-func     Robustness           boundary alphabets n=1 and n=286 PASS
+
+Total 92, Passed 92, Failed 0

@@ -1,0 +1,7 @@
+Mutant   Description                        Result      Caught by
+M1       sort compare < to <=               SURVIVED    Equivalent mutant (guarded by != on distinct items)
+M2       remove length-limit fix-up         KILLED      PR-01
+M3       canonical << 1 to << 0             KILLED      PR-04
+M4       reverse tie-break direction        KILLED      WB-11
+M5       single used symbol gets len 0      KILLED      PR-02
+M6       length limit off by one            KILLED      BB-37
